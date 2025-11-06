@@ -25,7 +25,7 @@ export function render(vnode: VNode, container: HTMLElement) {
   const style = document.createElement("style");
   style.innerHTML = "component { display: contents; }";
   document.head.appendChild(style);
-  patch(container, vnode);
+  return patch(container, vnode);
 }
 
 export function jsx(
@@ -50,6 +50,18 @@ export function jsx(
 
       if (key === "style") {
         data.style = props[key];
+        continue;
+      }
+
+      if (key === "class") {
+        // Snabbdom's classModule expects an object like { 'class-name': true }
+        // If it's a string, convert it to the object format
+        const classValue = props[key];
+        if (typeof classValue === 'string') {
+          data.class = { [classValue]: true };
+        } else {
+          data.class = classValue;
+        }
         continue;
       }
 

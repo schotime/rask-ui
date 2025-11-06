@@ -51,7 +51,6 @@ const hook = {
     vnode.data.componentInstance.onMounts.forEach((cb) => cb());
   },
   destroy(vnode: VNode & { data: { componentInstance: ComponentInstance } }) {
-    componentStack.shift();
     vnode.data.componentInstance.onCleanups.forEach((cb) => cb());
   },
   prepatch(oldVnode: VNode, thunk: VNode): void {
@@ -101,7 +100,7 @@ const hook = {
     };
 
     const instance: ComponentInstance = {
-      parent: getCurrentComponent(),
+      parent: thunk.data!.parentComponent || null,
       component,
       contexts: null,
       onMounts: [],
@@ -155,6 +154,10 @@ export function createComponent(
   const thunkNode = thunk("component", props.key, component, [props, children]);
 
   Object.assign(thunkNode.data.hook!, hook);
+
+  // Capture the parent component at vnode creation time (during render)
+  // rather than at init time, to ensure correct parent relationships
+  thunkNode.data.parentComponent = getCurrentComponent();
 
   return thunkNode;
 }
