@@ -53,6 +53,16 @@ export function jsx(
         continue;
       }
 
+      if (key === "ref") {
+        data.hook = data.hook || {};
+        const existingInsertHook = data.hook?.insert;
+        data.hook.insert = (vnode: VNode) => {
+          existingInsertHook?.(vnode);
+          (props.ref as any)(vnode.elm || null);
+        };
+        continue;
+      }
+
       if (key.startsWith("on")) {
         data.on = data.on || {};
         data.on[key.substring(2).toLocaleLowerCase()] = props[key];

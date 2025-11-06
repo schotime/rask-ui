@@ -234,6 +234,64 @@ function Example() {
 
 ---
 
+#### `createRef<T>()`
+
+Creates a ref object for accessing DOM elements or component instances directly.
+
+```tsx
+import { createRef } from "rask-ui";
+
+function Example() {
+  const inputRef = createRef<HTMLInputElement>();
+
+  const focus = () => {
+    inputRef.current?.focus();
+  };
+
+  return () => (
+    <div>
+      <input ref={inputRef} type="text" />
+      <button onClick={focus}>Focus Input</button>
+    </div>
+  );
+}
+```
+
+**Returns:** Ref object with:
+
+- `current: T | null` - Reference to the DOM element or component instance
+- Function signature for use as ref callback
+
+**Usage:**
+
+Pass the ref to an element's `ref` prop. The `current` property will be set to the DOM element when mounted and `null` when unmounted.
+
+**Example with SVG:**
+
+```tsx
+function Drawing() {
+  const svgRef = createRef<SVGSVGElement>();
+
+  const getSize = () => {
+    if (svgRef.current) {
+      const bbox = svgRef.current.getBBox();
+      console.log(`Width: ${bbox.width}, Height: ${bbox.height}`);
+    }
+  };
+
+  return () => (
+    <div>
+      <svg ref={svgRef} width="200" height="200">
+        <circle cx="100" cy="100" r="50" />
+      </svg>
+      <button onClick={getSize}>Get SVG Size</button>
+    </div>
+  );
+}
+```
+
+---
+
 ### Lifecycle Hooks
 
 #### `onMount(callback)`

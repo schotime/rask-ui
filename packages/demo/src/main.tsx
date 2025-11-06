@@ -1,12 +1,17 @@
-import { createState, render } from "rask-ui";
+import { createRef, createState, onMount, render } from "rask-ui";
 
 import "./style.css";
 
 function App() {
   const state = createState({ count: 0, items: ["foo"] });
+  const ref = createRef<HTMLDivElement>();
+
+  onMount(() => {
+    console.log(ref.current);
+  });
 
   return () => (
-    <div>
+    <div ref={ref}>
       <h1 onClick={() => state.count++}>Counter {state.count}</h1>
       <button onClick={() => state.items.push("bar")}>Add</button>
       <ul>
