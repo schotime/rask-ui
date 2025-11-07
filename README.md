@@ -1,5 +1,9 @@
 # RASK
 
+<p align="center">
+  <img src="logo.png" alt="Logo">
+</p>
+
 A lightweight reactive component library that combines the simplicity of observable state management with the full power of a virtual DOM reconciler.
 
 ```bash
@@ -189,8 +193,13 @@ function Counter(props) {
   return () => <div>{count}</div>; // Won't update!
 }
 
-function Child({ value, name }) { // Destructuring props!
-  return () => <div>{value} {name}</div>; // Won't update!
+function Child({ value, name }) {
+  // Destructuring props!
+  return () => (
+    <div>
+      {value} {name}
+    </div>
+  ); // Won't update!
 }
 
 // ✅ GOOD - Access properties directly in render
@@ -200,8 +209,13 @@ function Counter(props) {
   return () => <div>{state.count}</div>; // Reactive!
 }
 
-function Child(props) { // Don't destructure
-  return () => <div>{props.value} {props.name}</div>; // Reactive!
+function Child(props) {
+  // Don't destructure
+  return () => (
+    <div>
+      {props.value} {props.name}
+    </div>
+  ); // Reactive!
 }
 ```
 
@@ -210,6 +224,7 @@ function Child(props) { // Don't destructure
 Reactive objects are implemented using JavaScript Proxies. When you access a property during render (e.g., `state.count`), the proxy tracks that dependency. But when you destructure (`const { count } = state`), the destructuring happens during setup—before any tracking context exists. You get a plain value instead of a tracked property access.
 
 **This applies to:**
+
 - `createState()` - Never destructure state objects
 - Props - Never destructure component props
 - `createContext().get()` - Never destructure context values
