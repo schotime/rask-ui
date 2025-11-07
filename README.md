@@ -1,7 +1,7 @@
 # RASK
 
 <p align="center">
-  <img src="logo.png" alt="Logo">
+  <img src="logo.png" alt="Logo" width="200">
 </p>
 
 A lightweight reactive component library that combines the simplicity of observable state management with the full power of a virtual DOM reconciler.
