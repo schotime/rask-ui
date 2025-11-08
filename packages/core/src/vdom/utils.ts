@@ -1,4 +1,6 @@
+import { ComponentVNode } from "./ComponentVNode";
 import { TextVNode } from "./TextVNode";
+import { VNode } from "./types";
 
 export function diffObjectKeys(
   oldObj: Record<string, any>,
@@ -51,4 +53,20 @@ export function normalizeChildren(input: any): any[] {
   // Otherwise assume already a VNode
   out.push(input);
   return out;
+}
+
+export function findComponentVNode(vnode?: VNode): ComponentVNode | void {
+  if (!vnode) {
+    return;
+  }
+
+  while (vnode && !(vnode instanceof ComponentVNode)) {
+    if (!vnode.parent) {
+      return;
+    }
+
+    vnode = vnode.parent;
+  }
+
+  return vnode;
 }

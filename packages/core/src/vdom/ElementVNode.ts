@@ -1,4 +1,8 @@
-import { AbstractVNode } from "./AbstractVNode";
+import {
+  AbstractVNode,
+  flushPendingLifecycle,
+  queueUnmount,
+} from "./AbstractVNode";
 import { ComponentVNode } from "./ComponentVNode";
 import { FragmentVNode } from "./FragmentVNode";
 
@@ -106,15 +110,21 @@ export class ElementVNode extends AbstractVNode {
       // Unmount old
       // Replace unmounted with mounted
     }
+
+    if (isRootPatch) {
+      flushPendingLifecycle();
+    }
   }
   unmount() {
-    if (this.eventListeners) {
-      for (const type in this.eventListeners) {
-        this.elm!.removeEventListener(type, this.eventListeners[type]);
+    queueUnmount(() => {
+      if (this.eventListeners) {
+        for (const type in this.eventListeners) {
+          this.elm!.removeEventListener(type, this.eventListeners[type]);
+        }
       }
-    }
-    delete this.elm;
-    delete this.parent;
+      delete this.elm;
+      delete this.parent;
+    });
   }
   private patchProps(prevProps: Props) {
     const elm = this.getHTMLElement();

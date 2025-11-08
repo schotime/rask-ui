@@ -1,4 +1,8 @@
-import { AbstractVNode } from "./AbstractVNode";
+import {
+  AbstractVNode,
+  flushPendingLifecycle,
+  queueUnmount,
+} from "./AbstractVNode";
 import { ComponentVNode } from "./ComponentVNode";
 import { ElementVNode } from "./ElementVNode";
 import { TextVNode } from "./TextVNode";
@@ -26,6 +30,10 @@ export class FragmentVNode extends AbstractVNode {
     this.parent?.updateChildren(this, this);
   }
   patch(prevNode: VNode, isRootPatch: boolean = true) {
+    if (prevNode === this) {
+      return;
+    }
+
     this.parent = prevNode.parent;
 
     const newChildrenElms = this.patchChildren(prevNode.children);
@@ -34,6 +42,7 @@ export class FragmentVNode extends AbstractVNode {
 
     if (isRootPatch) {
       this.parent?.updateChildren(prevNode, this);
+      flushPendingLifecycle();
     }
 
     // Normally we would do the DOM operations here, as we have the element to apply
@@ -43,7 +52,10 @@ export class FragmentVNode extends AbstractVNode {
     // the elements and its own child reference up the tree so it can be reaplced
   }
   unmount() {
-    delete this.parent;
-    this.elm.textContent = "";
+    queueUnmount(() => {
+      this.children.forEach((child) => child.unmount());
+      delete this.parent;
+      this.elm.textContent = "";
+    });
   }
 }

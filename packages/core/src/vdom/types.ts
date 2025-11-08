@@ -11,6 +11,4 @@ export type VNode =
   | TextVNode
   | RootVNode;
 
-export type Component = (props: Record<string, unknown>) => () => VNode;
-
 export type Props = Record<string, unknown>;

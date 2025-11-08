@@ -1,5 +1,24 @@
-import { elementsToFragment, removeElementRange } from "./dom-utils";
 import { VNode } from "./types";
+
+const pendingLifecycle = {
+  toMount: [] as Array<() => void>,
+  toUnmount: [] as Array<() => void>,
+};
+
+export function flushPendingLifecycle() {
+  pendingLifecycle.toMount.forEach((cb) => cb());
+  pendingLifecycle.toUnmount.forEach((cb) => cb());
+  pendingLifecycle.toMount.length = 0;
+  pendingLifecycle.toUnmount.length = 0;
+}
+
+export function queueUnmount(cb: () => void) {
+  pendingLifecycle.toUnmount.push(cb);
+}
+
+export function queueMount(cb: () => void) {
+  pendingLifecycle.toMount.push(cb);
+}
 
 export abstract class AbstractVNode {
   key?: string;

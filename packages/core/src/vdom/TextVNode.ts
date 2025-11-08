@@ -1,4 +1,9 @@
-import { AbstractVNode } from "./AbstractVNode";
+import {
+  AbstractVNode,
+  flushPendingLifecycle,
+  queueMount,
+  queueUnmount,
+} from "./AbstractVNode";
 import { VNode } from "./types";
 
 export class TextVNode extends AbstractVNode {
@@ -17,6 +22,10 @@ export class TextVNode extends AbstractVNode {
     return textNode;
   }
   patch(prevNode: VNode, isRootPatch: boolean = true) {
+    if (prevNode === this) {
+      return;
+    }
+
     this.parent = prevNode.parent;
 
     if (prevNode instanceof TextVNode) {
@@ -27,10 +36,16 @@ export class TextVNode extends AbstractVNode {
       this.elm = this.mount(this.parent);
       prevNode.unmount();
     }
+
+    if (isRootPatch) {
+      flushPendingLifecycle();
+    }
   }
   updateChildren(prevNode: VNode, newNode: VNode): void {}
   unmount() {
-    delete this.elm;
-    delete this.parent;
+    queueUnmount(() => {
+      delete this.elm;
+      delete this.parent;
+    });
   }
 }

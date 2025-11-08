@@ -1,13 +1,13 @@
-import { ComponentVNode } from "./ComponentVNode";
+import { Component, ComponentVNode } from "./ComponentVNode";
 import { elementsToFragment } from "./dom-utils";
 import { ElementVNode } from "./ElementVNode";
 import { Fragment, FragmentVNode } from "./FragmentVNode";
 import { RootVNode } from "./RootVNode";
-import { Component, Props, VNode } from "./types";
+import { Props, VNode } from "./types";
 import { normalizeChildren } from "./utils";
 
 export function jsx(
-  type: string | typeof Fragment | Component,
+  type: string | typeof Fragment | Component<any>,
   props?: Props,
   key?: string
 ) {
@@ -32,4 +32,5 @@ export function render(vnode: VNode, container: HTMLElement) {
   const rootNode = new RootVNode(vnode, container);
   const elms = rootNode.mount();
   container.appendChild(elementsToFragment(elms));
+  return rootNode;
 }

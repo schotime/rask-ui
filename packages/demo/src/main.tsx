@@ -1,14 +1,10 @@
-import { createRef, createState, onMount, render } from "rask-ui";
+import { createRef, createState, render } from "rask-ui";
 
 import "./style.css";
 
 function App() {
   const state = createState({ count: 0, items: ["foo"] });
   const ref = createRef<HTMLDivElement>();
-
-  onMount(() => {
-    console.log(ref.current);
-  });
 
   return () => (
     <div ref={ref}>

@@ -1,4 +1,4 @@
-import { getCurrentComponent } from "./component";
+import { getCurrentComponent } from "./vdom/ComponentVNode";
 
 export function ErrorBoundary(props: {
   error: (error: unknown) => ChildNode | ChildNode[];
@@ -16,7 +16,9 @@ export function ErrorBoundary(props: {
 
     // Fix parent relationship: children vnodes were created with wrong parent,
     // we need to update them to point to this ErrorBoundary component
-    const children = Array.isArray(props.children) ? props.children : [props.children];
+    const children = Array.isArray(props.children)
+      ? props.children
+      : [props.children];
     children.forEach((child: any) => {
       if (child?.data?.parentComponent) {
         child.data.parentComponent = component;
