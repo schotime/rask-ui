@@ -1,9 +1,5 @@
-import {
-  AbstractVNode,
-  flushPendingLifecycle,
-  queueMount,
-  queueUnmount,
-} from "./AbstractVNode";
+import { AbstractVNode } from "./AbstractVNode";
+import { RootVNode } from "./RootVNode";
 import { VNode } from "./types";
 
 export class TextVNode extends AbstractVNode {
@@ -15,35 +11,25 @@ export class TextVNode extends AbstractVNode {
   mount(parent?: VNode): Node {
     this.parent = parent;
 
+    if (parent instanceof RootVNode) {
+      this.root = parent;
+    } else {
+      this.root = parent?.root;
+    }
+
     const textNode = document.createTextNode(this.text);
 
     this.elm = textNode;
 
     return textNode;
   }
-  patch(prevNode: VNode, isRootPatch: boolean = true) {
-    if (prevNode === this) {
-      return;
-    }
-
-    this.parent = prevNode.parent;
-
-    if (prevNode instanceof TextVNode) {
-      this.elm = prevNode.elm;
-      this.elm!.textContent = this.text;
-      prevNode.unmount();
-    } else {
-      this.elm = this.mount(this.parent);
-      prevNode.unmount();
-    }
-
-    if (isRootPatch) {
-      flushPendingLifecycle();
-    }
+  patch(newNode: TextVNode) {
+    this.text = newNode.text;
+    this.elm!.textContent = this.text;
   }
-  updateChildren(prevNode: VNode, newNode: VNode): void {}
+  rerender(): void {}
   unmount() {
-    queueUnmount(() => {
+    this.root?.queueUnmount(() => {
       delete this.elm;
       delete this.parent;
     });

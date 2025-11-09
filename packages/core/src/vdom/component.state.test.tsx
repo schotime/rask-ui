@@ -1,22 +1,22 @@
 import { describe, it, expect } from "vitest";
-import { ComponentVNode } from "./ComponentVNode";
-import { jsx } from "./index";
+import { jsx, render } from "./index";
 import { createState } from "../createState";
 
 describe("Component State", () => {
   it("should initialize state with default value", () => {
+    const container = document.createElement("div");
     const MyComponent = () => {
       const state = createState({ count: 0 });
       return () => jsx("div", { children: String(state.count) });
     };
 
-    const componentVNode = jsx(MyComponent, {}) as ComponentVNode;
-    const elements = componentVNode.mount();
+    render(jsx(MyComponent, {}), container);
 
-    expect(elements[0].textContent).toBe("0");
+    expect(container.children[0].textContent).toBe("0");
   });
 
   it("should update state when value changes", () => {
+    const container = document.createElement("div");
     let stateFn: { count: number } | undefined;
 
     const MyComponent = () => {
@@ -25,8 +25,7 @@ describe("Component State", () => {
       return () => jsx("div", { children: String(state.count) });
     };
 
-    const componentVNode = jsx(MyComponent, {}) as ComponentVNode;
-    componentVNode.mount();
+    render(jsx(MyComponent, {}), container);
 
     stateFn!.count = 5;
 
@@ -35,6 +34,7 @@ describe("Component State", () => {
   });
 
   it("should support multiple state values", () => {
+    const container = document.createElement("div");
     const MyComponent = () => {
       const state = createState({ count: 0, name: "John" });
       return () =>
@@ -46,15 +46,15 @@ describe("Component State", () => {
         });
     };
 
-    const componentVNode = jsx(MyComponent, {}) as ComponentVNode;
-    const elements = componentVNode.mount();
+    render(jsx(MyComponent, {}), container);
 
-    const div = elements[0] as HTMLDivElement;
+    const div = container.children[0] as HTMLDivElement;
     expect(div.children[0].textContent).toBe("0");
     expect(div.children[1].textContent).toBe("John");
   });
 
   it("should support incremental state updates", () => {
+    const container = document.createElement("div");
     let stateFn: { count: number } | undefined;
 
     const MyComponent = () => {
@@ -63,8 +63,7 @@ describe("Component State", () => {
       return () => jsx("div", { children: String(state.count) });
     };
 
-    const componentVNode = jsx(MyComponent, {}) as ComponentVNode;
-    componentVNode.mount();
+    render(jsx(MyComponent, {}), container);
 
     stateFn!.count = stateFn!.count + 1;
 
@@ -73,6 +72,7 @@ describe("Component State", () => {
   });
 
   it("should preserve state between re-renders", () => {
+    const container = document.createElement("div");
     let stateFn: { count: number } | undefined;
 
     const MyComponent = () => {
@@ -81,8 +81,7 @@ describe("Component State", () => {
       return () => jsx("div", { children: String(state.count) });
     };
 
-    const componentVNode = jsx(MyComponent, {}) as ComponentVNode;
-    componentVNode.mount();
+    render(jsx(MyComponent, {}), container);
 
     stateFn!.count = 1;
     stateFn!.count = 2;
@@ -93,6 +92,7 @@ describe("Component State", () => {
   });
 
   it("should support nested objects as state", () => {
+    const container = document.createElement("div");
     const MyComponent = () => {
       const state = createState({ user: { name: "John", age: 30 } });
       return () =>
@@ -101,13 +101,13 @@ describe("Component State", () => {
         });
     };
 
-    const componentVNode = jsx(MyComponent, {}) as ComponentVNode;
-    const elements = componentVNode.mount();
+    render(jsx(MyComponent, {}), container);
 
-    expect(elements[0].textContent).toBe("John is 30 years old");
+    expect(container.children[0].textContent).toBe("John is 30 years old");
   });
 
   it("should support arrays as state", () => {
+    const container = document.createElement("div");
     const MyComponent = () => {
       const state = createState({ items: [1, 2, 3] });
       return () =>
@@ -118,10 +118,9 @@ describe("Component State", () => {
         });
     };
 
-    const componentVNode = jsx(MyComponent, {}) as ComponentVNode;
-    const elements = componentVNode.mount();
+    render(jsx(MyComponent, {}), container);
 
-    const ul = elements[0] as HTMLUListElement;
+    const ul = container.children[0] as HTMLUListElement;
     expect(ul.children).toHaveLength(3);
     expect(ul.children[0].textContent).toBe("1");
     expect(ul.children[1].textContent).toBe("2");
@@ -129,6 +128,7 @@ describe("Component State", () => {
   });
 
   it("should update nested state properties", () => {
+    const container = document.createElement("div");
     let stateFn: { user: { name: string; age: number } } | undefined;
 
     const MyComponent = () => {
@@ -140,10 +140,9 @@ describe("Component State", () => {
         });
     };
 
-    const componentVNode = jsx(MyComponent, {}) as ComponentVNode;
-    const elements = componentVNode.mount();
+    render(jsx(MyComponent, {}), container);
 
-    expect(elements[0].textContent).toBe("Alice is 25");
+    expect(container.children[0].textContent).toBe("Alice is 25");
 
     stateFn!.user.name = "Bob";
     stateFn!.user.age = 30;
@@ -153,6 +152,7 @@ describe("Component State", () => {
   });
 
   it("should support array mutations", () => {
+    const container = document.createElement("div");
     let stateFn: { items: number[] } | undefined;
 
     const MyComponent = () => {
@@ -166,8 +166,7 @@ describe("Component State", () => {
         });
     };
 
-    const componentVNode = jsx(MyComponent, {}) as ComponentVNode;
-    componentVNode.mount();
+    render(jsx(MyComponent, {}), container);
 
     stateFn!.items.push(4);
 

@@ -32,5 +32,6 @@ export function render(vnode: VNode, container: HTMLElement) {
   const rootNode = new RootVNode(vnode, container);
   const elms = rootNode.mount();
   container.appendChild(elementsToFragment(elms));
+  rootNode.flushLifecycle();
   return rootNode;
 }

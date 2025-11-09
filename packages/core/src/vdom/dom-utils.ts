@@ -9,7 +9,11 @@ export function replaceElementsOf(
   }
 }
 
-export function elementsToFragment(elm: Node | Node[]) {
+export function elementsToFragment(elm: Node | Node[]): Node {
+  if (Array.isArray(elm) && elm.length === 1) {
+    return elm[0];
+  }
+
   if (Array.isArray(elm)) {
     const frag = document.createDocumentFragment();
     for (let i = 0; i < elm.length; i++) {
@@ -69,4 +73,26 @@ export function setElementStyle(
 
 export function isEventProp(name: string): boolean {
   return name.length > 2 && name[0] === "o" && name[1] === "n";
+}
+
+export function setElementClass(
+  elm: HTMLElement,
+  value: string | Record<string, boolean> | null | undefined
+) {
+  if (value === null || value === undefined) {
+    elm.className = "";
+    return;
+  }
+
+  if (typeof value === "string") {
+    elm.className = value;
+    return;
+  }
+
+  // Handle object notation: { "class-name": true, "other-class": false }
+  const classes = Object.keys(value)
+    .filter((key) => value[key])
+    .join(" ");
+
+  elm.className = classes;
 }

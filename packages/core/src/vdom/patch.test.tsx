@@ -1,56 +1,64 @@
 import { describe, it, expect, vi } from "vitest";
 import { jsx, render } from "./index";
+import { createState } from "../createState";
 
 describe("VDOM Patch", () => {
-  it("should patch a div element with a span element", () => {
-    // Create a container element
+  it("should patch a div element with a span element", async () => {
     const container = document.createElement("div");
+    let stateFn: { useSpan: boolean } | undefined;
 
-    // Create initial vnode (div)
-    const divVNode = jsx("div", { id: "initial" });
+    const App = () => {
+      const state = createState({ useSpan: false });
+      stateFn = state;
+      return () =>
+        state.useSpan
+          ? jsx("span", { id: "patched" })
+          : jsx("div", { id: "initial" });
+    };
 
-    // Render the initial vnode
-    render(divVNode, container);
+    render(jsx(App, {}), container);
 
     // Verify initial render
     expect(container.children.length).toBe(1);
     expect(container.children[0].tagName).toBe("DIV");
 
-    // Create new vnode (span)
-    const spanVNode = jsx("span", { id: "patched" });
-
-    // Patch: new node takes over from old node
-    spanVNode.patch(divVNode);
+    // Trigger patch by changing state
+    stateFn!.useSpan = true;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify the element was replaced
     expect(container.children.length).toBe(1);
     expect(container.children[0].tagName).toBe("SPAN");
   });
 
-  it("should patch element by adding children", () => {
-    // Create a container element
+  it("should patch element by adding children", async () => {
     const container = document.createElement("div");
+    let stateFn: { hasChildren: boolean } | undefined;
 
-    // Create initial vnode without children
-    const oldVNode = jsx("div", { id: "parent" });
+    const App = () => {
+      const state = createState({ hasChildren: false });
+      stateFn = state;
+      return () =>
+        state.hasChildren
+          ? jsx("div", {
+              id: "parent",
+              children: [
+                jsx("span", { id: "child1" }),
+                jsx("div", { id: "child2" }),
+              ],
+            })
+          : jsx("div", { id: "parent" });
+    };
 
-    // Render the initial vnode
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     // Verify initial state (no children)
     const parent = container.children[0] as HTMLElement;
     expect(parent.children.length).toBe(0);
 
-    // Create new vnode with children
-    const child1 = jsx("span", { id: "child1" });
-    const child2 = jsx("div", { id: "child2" });
-    const newVNode = jsx("div", {
-      id: "parent",
-      children: [child1, child2],
-    });
-
-    // Patch to add children
-    newVNode.patch(oldVNode);
+    // Trigger patch to add children
+    stateFn!.hasChildren = true;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify children were added
     expect(parent.children.length).toBe(2);
@@ -58,50 +66,66 @@ describe("VDOM Patch", () => {
     expect(parent.children[1].tagName).toBe("DIV");
   });
 
-  it("should patch element by removing children", () => {
-    // Create a container element
+  it("should patch element by removing children", async () => {
     const container = document.createElement("div");
+    let stateFn: { hasChildren: boolean } | undefined;
 
-    // Create initial vnode with children
-    const child1 = jsx("span", { id: "child1" });
-    const child2 = jsx("div", { id: "child2" });
-    const child3 = jsx("span", { id: "child3" });
-    const oldVNode = jsx("div", {
-      id: "parent",
-      children: [child1, child2, child3],
-    });
+    const App = () => {
+      const state = createState({ hasChildren: true });
+      stateFn = state;
+      return () =>
+        state.hasChildren
+          ? jsx("div", {
+              id: "parent",
+              children: [
+                jsx("span", { id: "child1" }),
+                jsx("div", { id: "child2" }),
+                jsx("span", { id: "child3" }),
+              ],
+            })
+          : jsx("div", { id: "parent" });
+    };
 
-    // Render the initial vnode
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     // Verify initial state (3 children)
     const parent = container.children[0] as HTMLElement;
     expect(parent.children.length).toBe(3);
 
-    // Create new vnode without children
-    const newVNode = jsx("div", { id: "parent" });
-
-    // Patch to remove children
-    newVNode.patch(oldVNode);
+    // Trigger patch to remove children
+    stateFn!.hasChildren = false;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify children were removed
     expect(parent.children.length).toBe(0);
   });
 
-  it("should patch element by changing child types", () => {
-    // Create a container element
+  it("should patch element by changing child types", async () => {
     const container = document.createElement("div");
+    let stateFn: { version: number } | undefined;
 
-    // Create initial vnode with span children
-    const oldChild1 = jsx("span", { id: "child1" });
-    const oldChild2 = jsx("span", { id: "child2" });
-    const oldVNode = jsx("div", {
-      id: "parent",
-      children: [oldChild1, oldChild2],
-    });
+    const App = () => {
+      const state = createState({ version: 1 });
+      stateFn = state;
+      return () =>
+        state.version === 1
+          ? jsx("div", {
+              id: "parent",
+              children: [
+                jsx("span", { id: "child1" }),
+                jsx("span", { id: "child2" }),
+              ],
+            })
+          : jsx("div", {
+              id: "parent",
+              children: [
+                jsx("div", { id: "child1" }),
+                jsx("button", { id: "child2" }),
+              ],
+            });
+    };
 
-    // Render the initial vnode
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     // Verify initial state (2 span children)
     const parent = container.children[0] as HTMLElement;
@@ -109,16 +133,9 @@ describe("VDOM Patch", () => {
     expect(parent.children[0].tagName).toBe("SPAN");
     expect(parent.children[1].tagName).toBe("SPAN");
 
-    // Create new vnode with different child types
-    const newChild1 = jsx("div", { id: "child1" });
-    const newChild2 = jsx("button", { id: "child2" });
-    const newVNode = jsx("div", {
-      id: "parent",
-      children: [newChild1, newChild2],
-    });
-
-    // Patch to change child types
-    newVNode.patch(oldVNode);
+    // Trigger patch to change child types
+    stateFn!.version = 2;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify children types were changed
     expect(parent.children.length).toBe(2);
@@ -126,15 +143,23 @@ describe("VDOM Patch", () => {
     expect(parent.children[1].tagName).toBe("BUTTON");
   });
 
-  it("should patch element by adding data/aria attributes", () => {
-    // Create a container element
+  it("should patch element by adding data/aria attributes", async () => {
     const container = document.createElement("div");
+    let stateFn: { hasAttributes: boolean } | undefined;
 
-    // Create initial vnode without attributes
-    const oldVNode = jsx("div", {});
+    const App = () => {
+      const state = createState({ hasAttributes: false });
+      stateFn = state;
+      return () =>
+        state.hasAttributes
+          ? jsx("div", {
+              "data-testid": "test-component",
+              "aria-label": "Test element",
+            })
+          : jsx("div", {});
+    };
 
-    // Render the initial vnode
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const div = container.children[0] as HTMLElement;
 
@@ -142,33 +167,33 @@ describe("VDOM Patch", () => {
     expect(div.getAttribute("data-testid")).toBeNull();
     expect(div.getAttribute("aria-label")).toBeNull();
 
-    // Create new vnode with data/aria attributes
-    const newVNode = jsx("div", {
-      "data-testid": "test-component",
-      "aria-label": "Test element",
-    });
-
-    // Patch to add attributes
-    newVNode.patch(oldVNode);
+    // Trigger patch to add attributes
+    stateFn!.hasAttributes = true;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify attributes were added
     expect(div.getAttribute("data-testid")).toBe("test-component");
     expect(div.getAttribute("aria-label")).toBe("Test element");
   });
 
-  it("should patch element by removing data/aria attributes", () => {
-    // Create a container element
+  it("should patch element by removing data/aria attributes", async () => {
     const container = document.createElement("div");
+    let stateFn: { hasAttributes: boolean } | undefined;
 
-    // Create initial vnode with data/aria attributes
-    const oldVNode = jsx("div", {
-      "data-testid": "test-component",
-      "data-value": "123",
-      "aria-label": "Test element",
-    });
+    const App = () => {
+      const state = createState({ hasAttributes: true });
+      stateFn = state;
+      return () =>
+        state.hasAttributes
+          ? jsx("div", {
+              "data-testid": "test-component",
+              "data-value": "123",
+              "aria-label": "Test element",
+            })
+          : jsx("div", {});
+    };
 
-    // Render the initial vnode
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const div = container.children[0] as HTMLElement;
 
@@ -177,11 +202,9 @@ describe("VDOM Patch", () => {
     expect(div.getAttribute("data-value")).toBe("123");
     expect(div.getAttribute("aria-label")).toBe("Test element");
 
-    // Create new vnode without attributes
-    const newVNode = jsx("div", {});
-
-    // Patch to remove attributes
-    newVNode.patch(oldVNode);
+    // Trigger patch to remove attributes
+    stateFn!.hasAttributes = false;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify attributes were removed
     expect(div.getAttribute("data-testid")).toBeNull();
@@ -189,19 +212,28 @@ describe("VDOM Patch", () => {
     expect(div.getAttribute("aria-label")).toBeNull();
   });
 
-  it("should patch element by updating data/aria attributes", () => {
-    // Create a container element
+  it("should patch element by updating data/aria attributes", async () => {
     const container = document.createElement("div");
+    let stateFn: { version: number } | undefined;
 
-    // Create initial vnode with data/aria attributes
-    const oldVNode = jsx("div", {
-      "data-testid": "old-id",
-      "data-value": "old-value",
-      "aria-label": "Old label",
-    });
+    const App = () => {
+      const state = createState({ version: 1 });
+      stateFn = state;
+      return () =>
+        state.version === 1
+          ? jsx("div", {
+              "data-testid": "old-id",
+              "data-value": "old-value",
+              "aria-label": "Old label",
+            })
+          : jsx("div", {
+              "data-testid": "new-id",
+              "data-value": "new-value",
+              "aria-label": "New label",
+            });
+    };
 
-    // Render the initial vnode
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const div = container.children[0] as HTMLElement;
 
@@ -210,15 +242,9 @@ describe("VDOM Patch", () => {
     expect(div.getAttribute("data-value")).toBe("old-value");
     expect(div.getAttribute("aria-label")).toBe("Old label");
 
-    // Create new vnode with updated data/aria attributes
-    const newVNode = jsx("div", {
-      "data-testid": "new-id",
-      "data-value": "new-value",
-      "aria-label": "New label",
-    });
-
-    // Patch to update attributes
-    newVNode.patch(oldVNode);
+    // Trigger patch to update attributes
+    stateFn!.version = 2;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify attributes were updated
     expect(div.getAttribute("data-testid")).toBe("new-id");
@@ -226,21 +252,23 @@ describe("VDOM Patch", () => {
     expect(div.getAttribute("aria-label")).toBe("New label");
   });
 
-  it("should patch element by updating event listeners", () => {
-    // Create a container element
+  it("should patch element by updating event listeners", async () => {
     const container = document.createElement("div");
+    let stateFn: { version: number } | undefined;
 
-    // Create mock click handlers
     const oldHandler = vi.fn();
     const newHandler = vi.fn();
 
-    // Create initial vnode with event listener
-    const oldVNode = jsx("button", {
-      onClick: oldHandler,
-    });
+    const App = () => {
+      const state = createState({ version: 1 });
+      stateFn = state;
+      return () =>
+        jsx("button", {
+          onClick: state.version === 1 ? oldHandler : newHandler,
+        });
+    };
 
-    // Render the initial vnode
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const button = container.children[0] as HTMLButtonElement;
 
@@ -249,13 +277,9 @@ describe("VDOM Patch", () => {
     expect(oldHandler).toHaveBeenCalledTimes(1);
     expect(newHandler).toHaveBeenCalledTimes(0);
 
-    // Create new vnode with different event listener
-    const newVNode = jsx("button", {
-      onClick: newHandler,
-    });
-
-    // Patch to update event listener
-    newVNode.patch(oldVNode);
+    // Trigger patch to update event listener
+    stateFn!.version = 2;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Trigger click again
     button.click();
@@ -265,39 +289,68 @@ describe("VDOM Patch", () => {
     expect(newHandler).toHaveBeenCalledTimes(1);
   });
 
-  it("should patch complex nested UI structure", () => {
-    // Create a container element
+  it("should patch complex nested UI structure", async () => {
     const container = document.createElement("div");
+    let stateFn: { version: number } | undefined;
 
-    // Create initial complex structure
-    const header = jsx("header", {
-      className: "header",
-      children: [
-        jsx("h1", { children: ["Title"] }),
-        jsx("nav", {
-          children: [
-            jsx("a", { href: "#home", children: ["Home"] }),
-            jsx("a", { href: "#about", children: ["About"] }),
-          ],
-        }),
-      ],
-    });
+    const App = () => {
+      const state = createState({ version: 1 });
+      stateFn = state;
+      return () =>
+        state.version === 1
+          ? jsx("div", {
+              className: "app",
+              children: [
+                jsx("header", {
+                  className: "header",
+                  children: [
+                    jsx("h1", { children: ["Title"] }),
+                    jsx("nav", {
+                      children: [
+                        jsx("a", { href: "#home", children: ["Home"] }),
+                        jsx("a", { href: "#about", children: ["About"] }),
+                      ],
+                    }),
+                  ],
+                }),
+                jsx("main", {
+                  className: "content",
+                  children: [
+                    jsx("p", { children: ["Paragraph 1"] }),
+                    jsx("p", { children: ["Paragraph 2"] }),
+                  ],
+                }),
+              ],
+            })
+          : jsx("div", {
+              className: "app-updated",
+              children: [
+                jsx("header", {
+                  className: "header-updated",
+                  children: [
+                    jsx("h1", { children: ["New Title"] }),
+                    jsx("nav", {
+                      children: [
+                        jsx("a", { href: "#home", children: ["Home"] }),
+                        jsx("a", { href: "#about", children: ["About"] }),
+                        jsx("a", { href: "#contact", children: ["Contact"] }),
+                      ],
+                    }),
+                  ],
+                }),
+                jsx("main", {
+                  className: "content",
+                  children: [
+                    jsx("p", { children: ["Updated Paragraph 1"] }),
+                    jsx("div", { children: ["New div element"] }),
+                    jsx("p", { children: ["Paragraph 3"] }),
+                  ],
+                }),
+              ],
+            });
+    };
 
-    const content = jsx("main", {
-      className: "content",
-      children: [
-        jsx("p", { children: ["Paragraph 1"] }),
-        jsx("p", { children: ["Paragraph 2"] }),
-      ],
-    });
-
-    const oldVNode = jsx("div", {
-      className: "app",
-      children: [header, content],
-    });
-
-    // Render the initial structure
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const app = container.children[0] as HTMLElement;
 
@@ -316,37 +369,9 @@ describe("VDOM Patch", () => {
     const initialMain = app.children[1];
     expect(initialMain.children.length).toBe(2);
 
-    // Create new complex structure with changes
-    const newHeader = jsx("header", {
-      className: "header-updated",
-      children: [
-        jsx("h1", { children: ["New Title"] }),
-        jsx("nav", {
-          children: [
-            jsx("a", { href: "#home", children: ["Home"] }),
-            jsx("a", { href: "#about", children: ["About"] }),
-            jsx("a", { href: "#contact", children: ["Contact"] }), // Added new link
-          ],
-        }),
-      ],
-    });
-
-    const newContent = jsx("main", {
-      className: "content",
-      children: [
-        jsx("p", { children: ["Updated Paragraph 1"] }),
-        jsx("div", { children: ["New div element"] }), // Changed from p to div
-        jsx("p", { children: ["Paragraph 3"] }), // Added new paragraph
-      ],
-    });
-
-    const newVNode = jsx("div", {
-      className: "app-updated",
-      children: [newHeader, newContent],
-    });
-
-    // Patch the structure
-    newVNode.patch(oldVNode);
+    // Trigger patch
+    stateFn!.version = 2;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify patched structure
     expect(app.className).toBe("app-updated");
@@ -367,58 +392,71 @@ describe("VDOM Patch", () => {
     expect(patchedMain.children[2].textContent).toBe("Paragraph 3");
   });
 
-  it("should patch nested elements independently", () => {
-    // Create a container element
+  it("should patch nested elements independently", async () => {
     const container = document.createElement("div");
+    let stateFn: { sidebarVersion: number; contentVersion: number } | undefined;
 
-    // Create initial nested structure
-    const sidebar = jsx("aside", {
-      className: "sidebar",
-      children: [
-        jsx("div", { className: "widget", children: ["Widget 1"] }),
-        jsx("div", { className: "widget", children: ["Widget 2"] }),
-      ],
-    });
-
-    const content = jsx("main", {
-      children: [
-        jsx("article", {
+    const App = () => {
+      const state = createState({ sidebarVersion: 1, contentVersion: 1 });
+      stateFn = state;
+      return () =>
+        jsx("div", {
+          className: "layout",
           children: [
-            jsx("h2", { children: ["Article Title"] }),
-            jsx("p", { children: ["Article content"] }),
+            state.sidebarVersion === 1
+              ? jsx("aside", {
+                  className: "sidebar",
+                  children: [
+                    jsx("div", { className: "widget", children: ["Widget 1"] }),
+                    jsx("div", { className: "widget", children: ["Widget 2"] }),
+                  ],
+                })
+              : jsx("aside", {
+                  className: "sidebar-updated",
+                  children: [
+                    jsx("div", {
+                      className: "widget",
+                      children: ["Widget 1 Updated"],
+                    }),
+                    jsx("div", { className: "widget", children: ["Widget 2"] }),
+                    jsx("div", { className: "widget", children: ["Widget 3"] }),
+                  ],
+                }),
+            state.contentVersion === 1
+              ? jsx("main", {
+                  children: [
+                    jsx("article", {
+                      children: [
+                        jsx("h2", { children: ["Article Title"] }),
+                        jsx("p", { children: ["Article content"] }),
+                      ],
+                    }),
+                  ],
+                })
+              : jsx("main", {
+                  children: [
+                    jsx("article", {
+                      children: [
+                        jsx("h2", { children: ["Updated Article Title"] }),
+                        jsx("p", { children: ["Updated article content"] }),
+                        jsx("footer", { children: ["Article footer"] }),
+                      ],
+                    }),
+                  ],
+                }),
           ],
-        }),
-      ],
-    });
+        });
+    };
 
-    const oldVNode = jsx("div", {
-      className: "layout",
-      children: [sidebar, content],
-    });
-
-    // Render the initial structure
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const layout = container.children[0] as HTMLElement;
     const initialSidebar = layout.children[0] as HTMLElement;
     const initialMain = layout.children[1] as HTMLElement;
 
     // First patch: Update only the sidebar
-    const newSidebar = jsx("aside", {
-      className: "sidebar-updated",
-      children: [
-        jsx("div", { className: "widget", children: ["Widget 1 Updated"] }),
-        jsx("div", { className: "widget", children: ["Widget 2"] }),
-        jsx("div", { className: "widget", children: ["Widget 3"] }),
-      ],
-    });
-
-    const firstPatchVNode = jsx("div", {
-      className: "layout",
-      children: [newSidebar, content],
-    });
-
-    firstPatchVNode.patch(oldVNode);
+    stateFn!.sidebarVersion = 2;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify only sidebar changed
     expect(initialSidebar.className).toBe("sidebar-updated");
@@ -432,24 +470,8 @@ describe("VDOM Patch", () => {
     expect(article.children[1].textContent).toBe("Article content");
 
     // Second patch: Update only the content
-    const newContent = jsx("main", {
-      children: [
-        jsx("article", {
-          children: [
-            jsx("h2", { children: ["Updated Article Title"] }),
-            jsx("p", { children: ["Updated article content"] }),
-            jsx("footer", { children: ["Article footer"] }),
-          ],
-        }),
-      ],
-    });
-
-    const secondPatchVNode = jsx("div", {
-      className: "layout",
-      children: [newSidebar, newContent],
-    });
-
-    secondPatchVNode.patch(firstPatchVNode);
+    stateFn!.contentVersion = 2;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Sidebar should remain from first patch
     expect(initialSidebar.className).toBe("sidebar-updated");
@@ -467,21 +489,26 @@ describe("VDOM Patch", () => {
     expect(updatedArticle.children[2].tagName).toBe("FOOTER");
   });
 
-  it("should handle multiple sequential patches", () => {
-    // Create a container element
+  it("should handle multiple sequential patches", async () => {
     const container = document.createElement("div");
+    let stateFn: { count: number } | undefined;
 
-    // Create initial structure
-    let currentVNode = jsx("div", {
-      className: "counter",
-      children: [
-        jsx("span", { children: ["Count: 0"] }),
-        jsx("button", { children: ["Increment"] }),
-      ],
-    });
+    const App = () => {
+      const state = createState({ count: 0 });
+      stateFn = state;
+      return () =>
+        jsx("div", {
+          className: "counter",
+          children: [
+            jsx("span", { children: [`Count: ${state.count}`] }),
+            jsx("button", {
+              children: [state.count < 3 ? "Increment" : "Reset"],
+            }),
+          ],
+        });
+    };
 
-    // Render the initial structure
-    render(currentVNode, container);
+    render(jsx(App, {}), container);
 
     const counterDiv = container.children[0] as HTMLElement;
 
@@ -489,91 +516,70 @@ describe("VDOM Patch", () => {
     expect(counterDiv.children[0].textContent).toBe("Count: 0");
 
     // Patch 1: Update count to 1
-    const patch1 = jsx("div", {
-      className: "counter",
-      children: [
-        jsx("span", { children: ["Count: 1"] }),
-        jsx("button", { children: ["Increment"] }),
-      ],
-    });
-
-    patch1.patch(currentVNode);
+    stateFn!.count = 1;
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(counterDiv.children[0].textContent).toBe("Count: 1");
 
     // Patch 2: Update count to 2
-    const patch2 = jsx("div", {
-      className: "counter",
-      children: [
-        jsx("span", { children: ["Count: 2"] }),
-        jsx("button", { children: ["Increment"] }),
-      ],
-    });
-
-    patch2.patch(patch1);
+    stateFn!.count = 2;
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(counterDiv.children[0].textContent).toBe("Count: 2");
 
     // Patch 3: Update count to 3 and change button text
-    const patch3 = jsx("div", {
-      className: "counter",
-      children: [
-        jsx("span", { children: ["Count: 3"] }),
-        jsx("button", { children: ["Reset"] }),
-      ],
-    });
-
-    patch3.patch(patch2);
+    stateFn!.count = 3;
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(counterDiv.children[0].textContent).toBe("Count: 3");
     expect(counterDiv.children[1].textContent).toBe("Reset");
 
     // Patch 4: Reset to 0 and add a new element
-    const patch4 = jsx("div", {
-      className: "counter",
-      children: [
-        jsx("span", { children: ["Count: 0"] }),
-        jsx("button", { children: ["Increment"] }),
-        jsx("small", { children: ["Click to increment"] }),
-      ],
-    });
-
-    patch4.patch(patch3);
-
-    expect(counterDiv.children.length).toBe(3);
+    stateFn!.count = 0;
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(counterDiv.children[0].textContent).toBe("Count: 0");
-    expect(counterDiv.children[2].tagName).toBe("SMALL");
+    expect(counterDiv.children[1].textContent).toBe("Increment");
   });
 
-  it("should patch deeply nested child independently", () => {
-    // Create a container element
+  it("should patch deeply nested child independently", async () => {
     const container = document.createElement("div");
+    let stateFn: { version: number } | undefined;
 
-    // Create initial deeply nested structure
-    const oldVNode = jsx("div", {
-      className: "root",
-      children: [
+    const App = () => {
+      const state = createState({ version: 1 });
+      stateFn = state;
+      return () =>
         jsx("div", {
-          className: "level-1",
+          className: "root",
           children: [
             jsx("div", {
-              className: "level-2",
+              className: "level-1",
               children: [
                 jsx("div", {
-                  className: "level-3",
+                  className: "level-2",
                   children: [
-                    jsx("span", { children: ["Deep content"], id: "target" }),
+                    jsx("div", {
+                      className: "level-3",
+                      children: [
+                        jsx("span", {
+                          children: [
+                            state.version === 1
+                              ? "Deep content"
+                              : "Updated deep content",
+                          ],
+                          id: state.version === 1 ? "target" : "target-updated",
+                        }),
+                      ],
+                    }),
+                    jsx("div", { children: ["Sibling at level-3"] }),
                   ],
                 }),
-                jsx("div", { children: ["Sibling at level-3"] }),
+                jsx("div", { children: ["Sibling at level-2"] }),
               ],
             }),
-            jsx("div", { children: ["Sibling at level-2"] }),
+            jsx("div", { children: ["Sibling at level-1"] }),
           ],
-        }),
-        jsx("div", { children: ["Sibling at level-1"] }),
-      ],
-    });
+        });
+    };
 
-    // Render the initial structure
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const root = container.children[0] as HTMLElement;
 
@@ -587,36 +593,9 @@ describe("VDOM Patch", () => {
     expect(targetSpan.textContent).toBe("Deep content");
     expect(targetSpan.id).toBe("target");
 
-    // Patch only the deeply nested element
-    const newVNode = jsx("div", {
-      className: "root",
-      children: [
-        jsx("div", {
-          className: "level-1",
-          children: [
-            jsx("div", {
-              className: "level-2",
-              children: [
-                jsx("div", {
-                  className: "level-3",
-                  children: [
-                    jsx("span", {
-                      children: ["Updated deep content"],
-                      id: "target-updated",
-                    }),
-                  ],
-                }),
-                jsx("div", { children: ["Sibling at level-3"] }),
-              ],
-            }),
-            jsx("div", { children: ["Sibling at level-2"] }),
-          ],
-        }),
-        jsx("div", { children: ["Sibling at level-1"] }),
-      ],
-    });
-
-    newVNode.patch(oldVNode);
+    // Trigger patch
+    stateFn!.version = 2;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify the deep element was updated
     expect(targetSpan.textContent).toBe("Updated deep content");

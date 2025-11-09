@@ -1,35 +1,31 @@
 import { describe, it, expect } from "vitest";
-import { ComponentVNode } from "./ComponentVNode";
-import { jsx } from "./index";
+import { jsx, render } from "./index";
 
 describe("Component Props", () => {
   it("should pass string props to component", () => {
+    const container = document.createElement("div");
     const MyComponent = (props: { message: string }) => {
       return () => jsx("div", { children: props.message });
     };
 
-    const componentVNode = jsx(MyComponent, {
-      message: "Hello Props",
-    }) as ComponentVNode;
-    const elements = componentVNode.mount();
+    render(jsx(MyComponent, { message: "Hello Props" }), container);
 
-    expect(elements[0].textContent).toBe("Hello Props");
+    expect(container.children[0].textContent).toBe("Hello Props");
   });
 
   it("should pass number props to component", () => {
+    const container = document.createElement("div");
     const MyComponent = (props: { count: number }) => {
       return () => jsx("div", { children: String(props.count) });
     };
 
-    const componentVNode = jsx(MyComponent, {
-      count: 42,
-    }) as ComponentVNode;
-    const elements = componentVNode.mount();
+    render(jsx(MyComponent, { count: 42 }), container);
 
-    expect(elements[0].textContent).toBe("42");
+    expect(container.children[0].textContent).toBe("42");
   });
 
   it("should pass object props to component", () => {
+    const container = document.createElement("div");
     const MyComponent = (props: { user: { name: string; age: number } }) => {
       return () =>
         jsx("div", {
@@ -37,15 +33,16 @@ describe("Component Props", () => {
         });
     };
 
-    const componentVNode = jsx(MyComponent, {
-      user: { name: "Alice", age: 25 },
-    }) as ComponentVNode;
-    const elements = componentVNode.mount();
+    render(
+      jsx(MyComponent, { user: { name: "Alice", age: 25 } }),
+      container
+    );
 
-    expect(elements[0].textContent).toBe("Alice is 25");
+    expect(container.children[0].textContent).toBe("Alice is 25");
   });
 
   it("should pass array props to component", () => {
+    const container = document.createElement("div");
     const MyComponent = (props: { items: string[] }) => {
       return () =>
         jsx("ul", {
@@ -53,12 +50,12 @@ describe("Component Props", () => {
         });
     };
 
-    const componentVNode = jsx(MyComponent, {
-      items: ["apple", "banana", "cherry"],
-    }) as ComponentVNode;
-    const elements = componentVNode.mount();
+    render(
+      jsx(MyComponent, { items: ["apple", "banana", "cherry"] }),
+      container
+    );
 
-    const ul = elements[0] as HTMLUListElement;
+    const ul = container.children[0] as HTMLUListElement;
     expect(ul.children).toHaveLength(3);
     expect(ul.children[0].textContent).toBe("apple");
     expect(ul.children[1].textContent).toBe("banana");
@@ -66,6 +63,7 @@ describe("Component Props", () => {
   });
 
   it("should pass function props to component", () => {
+    const container = document.createElement("div");
     const handleClick = () => "clicked";
     const MyComponent = (props: { onClick: () => string }) => {
       return () =>
@@ -74,15 +72,13 @@ describe("Component Props", () => {
         });
     };
 
-    const componentVNode = jsx(MyComponent, {
-      onClick: handleClick,
-    }) as ComponentVNode;
-    const elements = componentVNode.mount();
+    render(jsx(MyComponent, { onClick: handleClick }), container);
 
-    expect(elements[0].textContent).toBe("clicked");
+    expect(container.children[0].textContent).toBe("clicked");
   });
 
   it("should pass multiple props to component", () => {
+    const container = document.createElement("div");
     const MyComponent = (props: {
       title: string;
       count: number;
@@ -96,17 +92,17 @@ describe("Component Props", () => {
         });
     };
 
-    const componentVNode = jsx(MyComponent, {
-      title: "Counter",
-      count: 5,
-      isActive: true,
-    }) as ComponentVNode;
-    const elements = componentVNode.mount();
+    render(
+      jsx(MyComponent, { title: "Counter", count: 5, isActive: true }),
+      container
+    );
 
-    expect(elements[0].textContent).toBe("Counter: 5 (active)");
+    expect(container.children[0].textContent).toBe("Counter: 5 (active)");
   });
 
   it("should handle optional props", () => {
+    const container1 = document.createElement("div");
+    const container2 = document.createElement("div");
     const MyComponent = (props: { message?: string }) => {
       return () =>
         jsx("div", {
@@ -114,28 +110,22 @@ describe("Component Props", () => {
         });
     };
 
-    const componentVNode1 = jsx(MyComponent, {}) as ComponentVNode;
-    const elements1 = componentVNode1.mount();
-    expect(elements1[0].textContent).toBe("Default message");
+    render(jsx(MyComponent, {}), container1);
+    expect(container1.children[0].textContent).toBe("Default message");
 
-    const componentVNode2 = jsx(MyComponent, {
-      message: "Custom message",
-    }) as ComponentVNode;
-    const elements2 = componentVNode2.mount();
-    expect(elements2[0].textContent).toBe("Custom message");
+    render(jsx(MyComponent, { message: "Custom message" }), container2);
+    expect(container2.children[0].textContent).toBe("Custom message");
   });
 
   it("should update when props change", () => {
+    const container = document.createElement("div");
     const MyComponent = (props: { message: string }) => {
       return () => jsx("div", { children: props.message });
     };
 
-    const componentVNode = jsx(MyComponent, {
-      message: "Initial",
-    }) as ComponentVNode;
-    const elements = componentVNode.mount();
+    render(jsx(MyComponent, { message: "Initial" }), container);
 
-    expect(elements[0].textContent).toBe("Initial");
+    expect(container.children[0].textContent).toBe("Initial");
 
     // Simulate props update
     // The implementation will handle prop updates through patch

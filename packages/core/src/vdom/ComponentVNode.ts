@@ -1,12 +1,9 @@
 import { createState } from "../createState";
 import { getCurrentObserver, Observer, Signal } from "../observation";
-import {
-  AbstractVNode,
-  flushPendingLifecycle,
-  queueUnmount,
-} from "./AbstractVNode";
+import { AbstractVNode } from "./AbstractVNode";
 import { ElementVNode } from "./ElementVNode";
 import { FragmentVNode } from "./FragmentVNode";
+import { RootVNode } from "./RootVNode";
 import { Props, VNode } from "./types";
 import { normalizeChildren } from "./utils";
 
@@ -42,7 +39,8 @@ export type Component<P extends Props> =
 
 export type ComponentInstance = {
   parent?: VNode;
-  contexts: Map<object, object> | null;
+  contexts: Map<object, unknown> | null;
+  onMounts: Array<() => void>;
   onCleanups: Array<() => void>;
   observer: Observer;
   reactiveProps: object;
@@ -50,14 +48,35 @@ export type ComponentInstance = {
   notifyError(error: unknown): void;
 };
 
-const componentStack: ComponentInstance[] = [];
+import { currentRoot } from "./RootVNode";
 
 export function getCurrentComponent() {
-  return componentStack[0] || null;
+  if (!currentRoot) {
+    return null;
+  }
+  return currentRoot.componentStack[0] || null;
+}
+
+export function onMount(cb: () => void) {
+  if (!currentRoot) {
+    throw new Error("Only use onCleanup in component setup");
+  }
+
+  const current = currentRoot.componentStack[0];
+
+  if (!current) {
+    throw new Error("Only use onCleanup in component setup");
+  }
+
+  current.onMounts.push(cb);
 }
 
 export function onCleanup(cb: () => void) {
-  const current = componentStack[0];
+  if (!currentRoot) {
+    throw new Error("Only use onCleanup in component setup");
+  }
+
+  const current = currentRoot.componentStack[0];
 
   if (!current) {
     throw new Error("Only use onCleanup in component setup");
@@ -87,12 +106,17 @@ export class ComponentVNode extends AbstractVNode {
     this.children = [];
     this.key = key;
   }
-  updateChildren(prevNode: VNode, nextNode: VNode): void {
-    this.children.splice(this.children.indexOf(prevNode), 1, nextNode);
-    this.parent?.updateChildren(this, this);
+  rerender(): void {
+    this.parent?.rerender();
   }
   mount(parent?: VNode): Node[] {
     this.parent = parent;
+
+    if (parent instanceof RootVNode) {
+      this.root = parent;
+    } else {
+      this.root = parent?.root;
+    }
 
     let errorSignal: Signal | undefined;
     let error: unknown;
@@ -115,12 +139,14 @@ export class ComponentVNode extends AbstractVNode {
       parent,
       contexts: null,
       onCleanups: [],
+      onMounts: [],
       observer: new Observer(() => {
-        const prevChildren = this.children;
-        this.children = executeRender();
-        this.patchChildren(prevChildren);
-        this.parent?.updateChildren(this, this);
-        flushPendingLifecycle();
+        this.root?.setAsCurrent();
+        const newChildren = executeRender();
+        this.children = this.patchChildren(newChildren);
+        this.parent?.rerender();
+        this.root?.flushLifecycle();
+        this.root?.clearCurrent();
       }),
       reactiveProps: createState(this.props),
       get error() {
@@ -134,8 +160,14 @@ export class ComponentVNode extends AbstractVNode {
         return error;
       },
       notifyError(childError) {
+        console.log("notifyError called:", {
+          childError,
+          hasErrorSignal: !!errorSignal,
+          instanceParent: !!instance.parent,
+        });
         if (errorSignal) {
           error = childError;
+          console.log("Setting error and notifying signal");
           errorSignal.notify();
         } else if (instance.parent) {
           let parent: VNode | undefined = instance.parent;
@@ -144,6 +176,7 @@ export class ComponentVNode extends AbstractVNode {
             parent = parent?.parent;
           }
 
+          console.log("Bubbling to parent:", parent);
           parent.instance?.notifyError(childError);
         } else {
           throw childError;
@@ -151,51 +184,48 @@ export class ComponentVNode extends AbstractVNode {
       },
     });
 
-    componentStack.unshift(instance);
+    this.root?.setAsCurrent();
+    this.root?.pushComponent(instance);
     const render = this.component(instance.reactiveProps);
     this.children = executeRender();
+    this.root?.popComponent();
+    this.root?.clearCurrent();
 
-    return this.children.map((child) => child.mount(this)).flat();
+    const childElements = this.children
+      .map((child) => child.mount(this))
+      .flat();
+
+    // Queue onMount callbacks after children are mounted
+    // This ensures refs and other child lifecycle hooks run before parent onMount
+    instance.onMounts.forEach((cb) => {
+      this.root?.queueMount(cb);
+    });
+
+    return childElements;
   }
-  patch(prevNode: VNode, isRootPatch: boolean = true) {
-    if (prevNode === this) {
-      return;
+  patch(newNode: ComponentVNode) {
+    this.root?.setAsCurrent();
+    this.root?.pushComponent(this.instance!);
+
+    for (const prop in newNode.props) {
+      (this.instance!.reactiveProps as any)[prop] = this.props[prop];
     }
 
-    this.parent = prevNode.parent;
-
-    componentStack.unshift(this.instance!);
-
-    if (prevNode instanceof ElementVNode) {
-      this.mount(this.parent);
-      prevNode.unmount();
-    } else if (prevNode instanceof FragmentVNode) {
-      this.mount(this.parent);
-      prevNode.unmount();
-    } else if (
-      prevNode instanceof ComponentVNode &&
-      this.component === prevNode.component
-    ) {
-      this.instance = prevNode.instance;
-      this.children = prevNode.children;
-      for (const prop in this.props) {
-        (this.instance!.reactiveProps as any)[prop] = this.props[prop];
-      }
-    } else if (prevNode instanceof ComponentVNode) {
-      this.mount(this.parent);
-      prevNode.unmount();
-    }
-
-    componentStack.shift();
-
-    if (isRootPatch) {
-      flushPendingLifecycle();
-    }
+    this.root?.popComponent();
+    this.root?.clearCurrent();
   }
   unmount() {
+    this.instance!.observer.dispose();
     this.children.forEach((child) => child.unmount());
-    queueUnmount(() => {
-      this.instance!.onCleanups.forEach((cb) => cb());
+    this.root?.queueUnmount(() => {
+      this.instance!.onCleanups.forEach((cb) => {
+        try {
+          cb();
+        } catch (error) {
+          // Log error but continue executing remaining cleanups
+          console.error("Error during cleanup:", error);
+        }
+      });
     });
   }
 }

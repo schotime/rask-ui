@@ -1,37 +1,37 @@
-import {
-  AbstractVNode,
-  flushPendingLifecycle,
-  queueUnmount,
-} from "./AbstractVNode";
-import { ComponentVNode } from "./ComponentVNode";
-import { FragmentVNode } from "./FragmentVNode";
+import { AbstractVNode } from "./AbstractVNode";
+import { RootVNode } from "./RootVNode";
 
 import { Props, VNode } from "./types";
 import {
-  elementsToFragment,
   isEventProp,
   setElementAttr,
   setElementProp,
   setElementStyle,
+  setElementClass,
 } from "./dom-utils";
 import { diffObjectKeys } from "./utils";
-import { TextVNode } from "./TextVNode";
 
 export class ElementVNode extends AbstractVNode {
   tag: string;
   props: Props;
   children: VNode[];
   key?: string;
+  private ref?: <U extends HTMLElement>(node: U) => (() => void) | void;
   private eventListeners?: Record<string, () => void>;
-  constructor(tag: string, props: Props, children: VNode[], key?: string) {
+  constructor(
+    tag: string,
+    { ref, ...props }: Props,
+    children: VNode[],
+    key?: string
+  ) {
     super();
     this.tag = tag;
     this.props = props;
     this.children = children;
     this.key = key;
+    this.ref = ref as any;
   }
-  updateChildren(prevNode: VNode, newNode: VNode): void {
-    this.children.splice(this.children.indexOf(prevNode), 1, newNode);
+  rerender(): void {
     const childrenElms = this.children
       .map((child) => child.getElements())
       .flat();
@@ -40,10 +40,25 @@ export class ElementVNode extends AbstractVNode {
   }
   mount(parent?: VNode): Node {
     this.parent = parent;
+
+    if (parent instanceof RootVNode) {
+      this.root = parent;
+    } else {
+      this.root = parent?.root;
+    }
+
     const elm = (this.elm = document.createElement(this.tag));
 
-    // Apply props during mount
-    this.patchProps({});
+    for (const prop in this.props) {
+      this.setProp(prop, this.props[prop]);
+    }
+
+    if (this.ref) {
+      const ref = this.ref;
+      this.root?.queueMount(() => {
+        ref(elm);
+      });
+    }
 
     this.children.forEach((child) => {
       const childrenElms = child.mount(this);
@@ -62,54 +77,20 @@ export class ElementVNode extends AbstractVNode {
    * - Patch or replace the element
    * - Patch the children
    */
-  patch(prevNode: VNode, isRootPatch: boolean = true) {
-    if (prevNode === this) {
-      return;
-    }
+  patch(newNode: ElementVNode) {
+    this.patchProps(newNode.props);
+    this.props = newNode.props;
+    this.children = this.patchChildren(newNode.children);
 
-    this.parent = prevNode.parent;
+    const childrenElms = this.children
+      .map((child) => child.getElements())
+      .flat();
 
-    if (prevNode instanceof ElementVNode) {
-      if (prevNode.tag !== this.tag) {
-        const elm = (this.elm = document.createElement(this.tag));
-        this.patchProps({});
-        const childrenElms = this.patchChildren(prevNode.children);
-
-        elm.appendChild(elementsToFragment(childrenElms));
-
-        prevNode.getParentElement().replaceChild(elm, prevNode.elm!);
-        prevNode.unmount();
-      } else {
-        this.elm = prevNode.elm!;
-        this.patchProps(prevNode.props);
-
-        const childrenElms = this.patchChildren(prevNode.children);
-
-        (this.elm as HTMLElement).replaceChildren(...childrenElms);
-
-        prevNode.unmount();
-      }
-    } else {
-      const elm = (this.elm = document.createElement(this.tag));
-      this.patchProps({});
-      const childrenElms = this.patchChildren(prevNode.children);
-      elm.appendChild(elementsToFragment(childrenElms));
-
-      if (prevNode instanceof TextVNode) {
-        prevNode.getParentElement().replaceChild(elm, prevNode.elm!);
-      } else {
-        // What if previous was a component or fragment?
-      }
-
-      prevNode.unmount();
-    }
-
-    if (isRootPatch) {
-      flushPendingLifecycle();
-    }
+    (this.elm as HTMLElement).replaceChildren(...childrenElms);
   }
   unmount() {
-    queueUnmount(() => {
+    this.children.forEach((child) => child.unmount());
+    this.root?.queueUnmount(() => {
       if (this.eventListeners) {
         for (const type in this.eventListeners) {
           this.elm!.removeEventListener(type, this.eventListeners[type]);
@@ -119,33 +100,47 @@ export class ElementVNode extends AbstractVNode {
       delete this.parent;
     });
   }
-  private patchProps(prevProps: Props) {
+  private setProp = (prop: string, value: any) => {
     const elm = this.getHTMLElement();
 
-    diffObjectKeys(prevProps, this.props, (prop, value) => {
-      if (prop === "children") {
-        return;
-      }
+    if (prop === "children") {
+      return;
+    }
 
-      if (prop === "style") {
-        setElementStyle(elm, value);
-        return;
-      }
+    if (prop === "class") {
+      setElementClass(elm, value as string | Record<string, boolean>);
+      return;
+    }
 
-      if (prop.startsWith("data-") || prop.startsWith("aria-")) {
-        setElementAttr(elm, prop, value as string);
-        return;
-      }
+    // Skip className if class is present (class takes precedence)
+    if (prop === "className" && "class" in this.props) {
+      return;
+    }
 
-      if (isEventProp(prop)) {
-        this.addEventListener(prop.slice(2).toLowerCase(), value as () => void);
-        return;
-      }
+    if (prop === "style") {
+      setElementStyle(elm, value);
+      return;
+    }
 
-      setElementProp(elm, prop, value);
-    });
+    if (prop.startsWith("data-") || prop.startsWith("aria-")) {
+      setElementAttr(elm, prop, value as string);
+      return;
+    }
+
+    if (isEventProp(prop)) {
+      this.addEventListener(
+        prop.slice(2).toLowerCase(),
+        value as (() => void) | null
+      );
+      return;
+    }
+
+    setElementProp(elm, prop, value);
+  };
+  private patchProps(newProps: Props) {
+    diffObjectKeys(this.props, newProps, this.setProp);
   }
-  private addEventListener(type: string, cb: () => void) {
+  private addEventListener(type: string, cb: (() => void) | null) {
     if (!this.eventListeners) {
       this.eventListeners = {};
     }
@@ -154,7 +149,11 @@ export class ElementVNode extends AbstractVNode {
       this.elm!.removeEventListener(type, this.eventListeners[type]);
     }
 
-    this.elm!.addEventListener(type, cb);
-    this.eventListeners[type] = cb;
+    if (typeof cb === "function") {
+      this.elm!.addEventListener(type, cb);
+      this.eventListeners[type] = cb;
+    } else {
+      delete this.eventListeners[type];
+    }
   }
 }

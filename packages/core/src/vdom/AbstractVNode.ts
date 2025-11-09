@@ -1,34 +1,16 @@
+import { RootVNode } from "./RootVNode";
 import { VNode } from "./types";
-
-const pendingLifecycle = {
-  toMount: [] as Array<() => void>,
-  toUnmount: [] as Array<() => void>,
-};
-
-export function flushPendingLifecycle() {
-  pendingLifecycle.toMount.forEach((cb) => cb());
-  pendingLifecycle.toUnmount.forEach((cb) => cb());
-  pendingLifecycle.toMount.length = 0;
-  pendingLifecycle.toUnmount.length = 0;
-}
-
-export function queueUnmount(cb: () => void) {
-  pendingLifecycle.toUnmount.push(cb);
-}
-
-export function queueMount(cb: () => void) {
-  pendingLifecycle.toMount.push(cb);
-}
 
 export abstract class AbstractVNode {
   key?: string;
   parent?: VNode;
+  root?: RootVNode;
   elm?: Node;
   children?: VNode[];
   abstract mount(parent?: VNode): Node | Node[];
-  abstract patch(oldNode: VNode, isRootPatch?: boolean): void;
+  abstract patch(oldNode: VNode): void;
   abstract unmount(): void;
-  abstract updateChildren(prevNode: VNode, newNode: VNode): void;
+  abstract rerender(): void;
   protected getHTMLElement() {
     if (!this.elm || !(this.elm instanceof HTMLElement)) {
       throw new Error("This VNode does not have an HTMLElement");
@@ -67,26 +49,42 @@ export abstract class AbstractVNode {
 
     throw new Error("There is no parent element for this VNode");
   }
-  patchChildren(prevChildren?: VNode[]): Node[] {
-    let newChildren = this.children;
-
-    if (newChildren === undefined && prevChildren === undefined) {
-      return [];
+  private canPatch(oldNode: VNode, newNode: VNode): boolean {
+    // Must be same constructor type
+    if (oldNode.constructor !== newNode.constructor) {
+      return false;
     }
 
+    // For ElementVNodes, must have same tag
+    if ("tag" in oldNode && "tag" in newNode) {
+      return (oldNode as any).tag === (newNode as any).tag;
+    }
+
+    // For ComponentVNodes, must have same component function
+    if ("component" in oldNode && "component" in newNode) {
+      return (oldNode as any).component === (newNode as any).component;
+    }
+
+    // TextVNodes and FragmentVNodes can always patch
+    return true;
+  }
+
+  patchChildren(newChildren: VNode[]): VNode[] {
+    const prevChildren = this.children!;
+
     // When there are only new children, we just mount them
-    if (newChildren && prevChildren === undefined) {
-      return newChildren.map((child) => child.mount(this as any)).flat();
+    if (newChildren && prevChildren.length === 0) {
+      newChildren.forEach((child) => child.mount(this as any));
+
+      return newChildren;
     }
 
     // If we want to remove all children, we just unmount the previous ones
-    if (newChildren === undefined && prevChildren) {
+    if (!newChildren.length && prevChildren.length) {
       prevChildren.forEach((child) => child.unmount());
+
       return [];
     }
-
-    newChildren = newChildren as VNode[];
-    prevChildren = prevChildren as VNode[];
 
     const oldKeys: Record<string, VNode> = {};
 
@@ -94,26 +92,40 @@ export abstract class AbstractVNode {
       oldKeys[prevChild.key || index] = prevChild;
     });
 
-    // Okay, so this does not seem to properly handle mount when in between children are created
+    // Build result array in the NEW order
+    const result: VNode[] = [];
+
     newChildren.forEach((newChild, index) => {
       const key = newChild.key || index;
-
       const prevChild = oldKeys[key];
 
       if (!prevChild) {
+        // New child - mount and add to result
         newChild.mount(this as any);
-        return;
+        result.push(newChild);
+      } else if (prevChild === newChild) {
+        // Same instance - no patching needed, just reuse
+        result.push(prevChild);
+        delete oldKeys[key];
+      } else if (this.canPatch(prevChild, newChild)) {
+        // Compatible types - patch and reuse old VNode
+        prevChild.patch(newChild);
+        result.push(prevChild);
+        delete oldKeys[key];
+      } else {
+        // Incompatible types - replace completely
+        newChild.mount(this as any);
+        prevChild.unmount();
+        result.push(newChild);
+        delete oldKeys[key];
       }
-
-      newChild.patch(prevChild, false);
-
-      delete oldKeys[key];
     });
 
+    // Unmount any old children that weren't reused
     for (const key in oldKeys) {
       oldKeys[key].unmount();
     }
 
-    return newChildren.map((child) => child.getElements()).flat();
+    return result;
   }
 }

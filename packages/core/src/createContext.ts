@@ -28,7 +28,7 @@ import { findComponentVNode } from "./vdom/utils";
  *
  * @returns Context object with inject() and get() methods
  */
-export function createContext<T extends object>() {
+export function createContext<T>() {
   const context = {
     inject(value: T) {
       const currentComponent = getCurrentComponent();

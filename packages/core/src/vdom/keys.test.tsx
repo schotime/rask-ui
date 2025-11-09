@@ -1,22 +1,26 @@
 import { describe, it, expect } from "vitest";
 import { jsx, render } from "./index";
+import { createState } from "../createState";
+
+const waitForUpdate = () => new Promise((resolve) => setTimeout(resolve, 10));
 
 describe("VDOM Keys", () => {
-  it("should preserve elements when reordering with keys", () => {
-    // Create a container element
+  it("should preserve elements when reordering with keys", async () => {
     const container = document.createElement("div");
+    let stateFn: ReturnType<typeof createState<{ order: string[] }>>;
 
-    // Create initial list with keys
-    const oldVNode = jsx("ul", {
-      children: [
-        jsx("li", { children: "Item A" }, "a"),
-        jsx("li", { children: "Item B" }, "b"),
-        jsx("li", { children: "Item C" }, "c"),
-      ],
-    });
+    const App = () => {
+      const state = createState({ order: ["a", "b", "c"] });
+      stateFn = state;
+      return () =>
+        jsx("ul", {
+          children: state.order.map((key) =>
+            jsx("li", { children: `Item ${key.toUpperCase()}` }, key)
+          ),
+        });
+    };
 
-    // Render the initial list
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const ul = container.children[0] as HTMLElement;
     const initialChildren = Array.from(ul.children);
@@ -30,17 +34,9 @@ describe("VDOM Keys", () => {
     expect(itemB.textContent).toBe("Item B");
     expect(itemC.textContent).toBe("Item C");
 
-    // Create new list with items reordered (C, A, B)
-    const newVNode = jsx("ul", {
-      children: [
-        jsx("li", { children: "Item C" }, "c"),
-        jsx("li", { children: "Item A" }, "a"),
-        jsx("li", { children: "Item B" }, "b"),
-      ],
-    });
-
-    // Patch to reorder
-    newVNode.patch(oldVNode);
+    // Reorder to C, A, B
+    stateFn!.order = ["c", "a", "b"];
+    await waitForUpdate();
 
     const newChildren = Array.from(ul.children);
 
@@ -55,21 +51,20 @@ describe("VDOM Keys", () => {
     expect(newChildren[2].textContent).toBe("Item B");
   });
 
-  it("should not preserve elements when reordering without keys", () => {
-    // Create a container element
+  it("should not preserve elements when reordering without keys", async () => {
     const container = document.createElement("div");
+    let stateFn: ReturnType<typeof createState<{ items: string[] }>>;
 
-    // Create initial list WITHOUT keys
-    const oldVNode = jsx("ul", {
-      children: [
-        jsx("li", { children: "Item A" }),
-        jsx("li", { children: "Item B" }),
-        jsx("li", { children: "Item C" }),
-      ],
-    });
+    const App = () => {
+      const state = createState({ items: ["Item A", "Item B", "Item C"] });
+      stateFn = state;
+      return () =>
+        jsx("ul", {
+          children: state.items.map((text) => jsx("li", { children: text })),
+        });
+    };
 
-    // Render the initial list
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const ul = container.children[0] as HTMLElement;
     const initialChildren = Array.from(ul.children);
@@ -79,17 +74,9 @@ describe("VDOM Keys", () => {
     const itemB = initialChildren[1];
     const itemC = initialChildren[2];
 
-    // Create new list with items reordered (C, A, B)
-    const newVNode = jsx("ul", {
-      children: [
-        jsx("li", { children: "Item C" }),
-        jsx("li", { children: "Item A" }),
-        jsx("li", { children: "Item B" }),
-      ],
-    });
-
-    // Patch to reorder
-    newVNode.patch(oldVNode);
+    // Reorder to C, A, B
+    stateFn!.items = ["Item C", "Item A", "Item B"];
+    await waitForUpdate();
 
     const newChildren = Array.from(ul.children);
 
@@ -104,21 +91,27 @@ describe("VDOM Keys", () => {
     expect(newChildren[2].textContent).toBe("Item B");
   });
 
-  it("should preserve element state when reordering with keys", () => {
-    // Create a container element
+  it("should preserve element state when reordering with keys", async () => {
     const container = document.createElement("div");
+    let stateFn: ReturnType<
+      typeof createState<{ order: string[]; values: Record<string, string> }>
+    >;
 
-    // Create initial list with input elements that have keys
-    const oldVNode = jsx("div", {
-      children: [
-        jsx("input", { value: "First" }, "first"),
-        jsx("input", { value: "Second" }, "second"),
-        jsx("input", { value: "Third" }, "third"),
-      ],
-    });
+    const App = () => {
+      const state = createState({
+        order: ["first", "second", "third"],
+        values: { first: "First", second: "Second", third: "Third" },
+      });
+      stateFn = state;
+      return () =>
+        jsx("div", {
+          children: state.order.map((key) =>
+            jsx("input", { value: state.values[key] }, key)
+          ),
+        });
+    };
 
-    // Render the initial list
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const div = container.children[0] as HTMLElement;
     const initialInputs = Array.from(div.children) as HTMLInputElement[];
@@ -133,17 +126,9 @@ describe("VDOM Keys", () => {
     const input2 = initialInputs[1];
     const input3 = initialInputs[2];
 
-    // Create new list with inputs reordered (third, first, second)
-    const newVNode = jsx("div", {
-      children: [
-        jsx("input", { value: "Third" }, "third"),
-        jsx("input", { value: "First" }, "first"),
-        jsx("input", { value: "Second" }, "second"),
-      ],
-    });
-
-    // Patch to reorder
-    newVNode.patch(oldVNode);
+    // Reorder to third, first, second
+    stateFn!.order = ["third", "first", "second"];
+    await waitForUpdate();
 
     const newInputs = Array.from(div.children) as HTMLInputElement[];
 
@@ -158,20 +143,22 @@ describe("VDOM Keys", () => {
     expect(newInputs[2].value).toBe("Modified Second");
   });
 
-  it("should handle adding new items with keys", () => {
-    // Create a container element
+  it("should handle adding new items with keys", async () => {
     const container = document.createElement("div");
+    let stateFn: ReturnType<typeof createState<{ items: string[] }>>;
 
-    // Create initial list with keys
-    const oldVNode = jsx("ul", {
-      children: [
-        jsx("li", { children: "Item A" }, "a"),
-        jsx("li", { children: "Item B" }, "b"),
-      ],
-    });
+    const App = () => {
+      const state = createState({ items: ["a", "b"] });
+      stateFn = state;
+      return () =>
+        jsx("ul", {
+          children: state.items.map((key) =>
+            jsx("li", { children: `Item ${key.toUpperCase()}` }, key)
+          ),
+        });
+    };
 
-    // Render the initial list
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const ul = container.children[0] as HTMLElement;
     const initialChildren = Array.from(ul.children);
@@ -183,16 +170,8 @@ describe("VDOM Keys", () => {
     const itemB = initialChildren[1];
 
     // Add a new item in the middle
-    const newVNode = jsx("ul", {
-      children: [
-        jsx("li", { children: "Item A" }, "a"),
-        jsx("li", { children: "Item C" }, "c"), // New item
-        jsx("li", { children: "Item B" }, "b"),
-      ],
-    });
-
-    // Patch to add new item
-    newVNode.patch(oldVNode);
+    stateFn!.items = ["a", "c", "b"];
+    await waitForUpdate();
 
     const newChildren = Array.from(ul.children);
 
@@ -208,21 +187,22 @@ describe("VDOM Keys", () => {
     expect(newChildren[1].textContent).toBe("Item C");
   });
 
-  it("should handle removing items with keys", () => {
-    // Create a container element
+  it("should handle removing items with keys", async () => {
     const container = document.createElement("div");
+    let stateFn: ReturnType<typeof createState<{ items: string[] }>>;
 
-    // Create initial list with keys
-    const oldVNode = jsx("ul", {
-      children: [
-        jsx("li", { children: "Item A" }, "a"),
-        jsx("li", { children: "Item B" }, "b"),
-        jsx("li", { children: "Item C" }, "c"),
-      ],
-    });
+    const App = () => {
+      const state = createState({ items: ["a", "b", "c"] });
+      stateFn = state;
+      return () =>
+        jsx("ul", {
+          children: state.items.map((key) =>
+            jsx("li", { children: `Item ${key.toUpperCase()}` }, key)
+          ),
+        });
+    };
 
-    // Render the initial list
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const ul = container.children[0] as HTMLElement;
     const initialChildren = Array.from(ul.children);
@@ -234,15 +214,8 @@ describe("VDOM Keys", () => {
     const itemC = initialChildren[2];
 
     // Remove the middle item
-    const newVNode = jsx("ul", {
-      children: [
-        jsx("li", { children: "Item A" }, "a"),
-        jsx("li", { children: "Item C" }, "c"),
-      ],
-    });
-
-    // Patch to remove middle item
-    newVNode.patch(oldVNode);
+    stateFn!.items = ["a", "c"];
+    await waitForUpdate();
 
     const newChildren = Array.from(ul.children);
 
@@ -253,21 +226,22 @@ describe("VDOM Keys", () => {
     expect(newChildren[1]).toBe(itemC);
   });
 
-  it("should handle replacing all items with different keys", () => {
-    // Create a container element
+  it("should handle replacing all items with different keys", async () => {
     const container = document.createElement("div");
+    let stateFn: ReturnType<typeof createState<{ items: string[] }>>;
 
-    // Create initial list with keys
-    const oldVNode = jsx("ul", {
-      children: [
-        jsx("li", { children: "Item A" }, "a"),
-        jsx("li", { children: "Item B" }, "b"),
-        jsx("li", { children: "Item C" }, "c"),
-      ],
-    });
+    const App = () => {
+      const state = createState({ items: ["a", "b", "c"] });
+      stateFn = state;
+      return () =>
+        jsx("ul", {
+          children: state.items.map((key) =>
+            jsx("li", { children: `Item ${key.toUpperCase()}` }, key)
+          ),
+        });
+    };
 
-    // Render the initial list
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const ul = container.children[0] as HTMLElement;
     const initialChildren = Array.from(ul.children);
@@ -278,16 +252,8 @@ describe("VDOM Keys", () => {
     const itemC = initialChildren[2];
 
     // Replace all items with new keys
-    const newVNode = jsx("ul", {
-      children: [
-        jsx("li", { children: "Item X" }, "x"),
-        jsx("li", { children: "Item Y" }, "y"),
-        jsx("li", { children: "Item Z" }, "z"),
-      ],
-    });
-
-    // Patch to replace all
-    newVNode.patch(oldVNode);
+    stateFn!.items = ["x", "y", "z"];
+    await waitForUpdate();
 
     const newChildren = Array.from(ul.children);
 
@@ -303,23 +269,22 @@ describe("VDOM Keys", () => {
     expect(newChildren[2].textContent).toBe("Item Z");
   });
 
-  it("should handle complex reordering scenario with keys", () => {
-    // Create a container element
+  it("should handle complex reordering scenario with keys", async () => {
     const container = document.createElement("div");
+    let stateFn: ReturnType<typeof createState<{ items: string[] }>>;
 
-    // Create initial list: [A, B, C, D, E]
-    const oldVNode = jsx("ul", {
-      children: [
-        jsx("li", { children: "A" }, "a"),
-        jsx("li", { children: "B" }, "b"),
-        jsx("li", { children: "C" }, "c"),
-        jsx("li", { children: "D" }, "d"),
-        jsx("li", { children: "E" }, "e"),
-      ],
-    });
+    const App = () => {
+      const state = createState({ items: ["a", "b", "c", "d", "e"] });
+      stateFn = state;
+      return () =>
+        jsx("ul", {
+          children: state.items.map((key) =>
+            jsx("li", { children: key.toUpperCase() }, key)
+          ),
+        });
+    };
 
-    // Render the initial list
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const ul = container.children[0] as HTMLElement;
     const initialChildren = Array.from(ul.children);
@@ -327,19 +292,8 @@ describe("VDOM Keys", () => {
     const [itemA, itemB, itemC, itemD, itemE] = initialChildren;
 
     // Complex reorder: remove C, add F, reorder to [E, A, F, D, B]
-    const newVNode = jsx("ul", {
-      children: [
-        jsx("li", { children: "E" }, "e"),
-        jsx("li", { children: "A" }, "a"),
-        jsx("li", { children: "F" }, "f"), // New item
-        jsx("li", { children: "D" }, "d"),
-        jsx("li", { children: "B" }, "b"),
-        // C is removed
-      ],
-    });
-
-    // Patch to apply complex changes
-    newVNode.patch(oldVNode);
+    stateFn!.items = ["e", "a", "f", "d", "b"];
+    await waitForUpdate();
 
     const newChildren = Array.from(ul.children);
 
@@ -363,38 +317,32 @@ describe("VDOM Keys", () => {
     expect(newChildren.includes(itemC)).toBe(false);
   });
 
-  it("should handle nested elements with keys", () => {
-    // Create a container element
+  it("should handle nested elements with keys", async () => {
     const container = document.createElement("div");
+    let stateFn: ReturnType<typeof createState<{ order: string[] }>>;
 
-    // Create initial nested structure with keys
-    const oldVNode = jsx("div", {
-      children: [
-        jsx(
-          "section",
-          {
-            children: [
-              jsx("h2", { children: "Section 1" }),
-              jsx("p", { children: "Content 1" }),
-            ],
-          },
-          "section1"
-        ),
-        jsx(
-          "section",
-          {
-            children: [
-              jsx("h2", { children: "Section 2" }),
-              jsx("p", { children: "Content 2" }),
-            ],
-          },
-          "section2"
-        ),
-      ],
-    });
+    const App = () => {
+      const state = createState({ order: ["section1", "section2"] });
+      stateFn = state;
+      return () =>
+        jsx("div", {
+          children: state.order.map((key) => {
+            const num = key === "section1" ? "1" : "2";
+            return jsx(
+              "section",
+              {
+                children: [
+                  jsx("h2", { children: `Section ${num}` }),
+                  jsx("p", { children: `Content ${num}` }),
+                ],
+              },
+              key
+            );
+          }),
+        });
+    };
 
-    // Render the initial structure
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const div = container.children[0] as HTMLElement;
     const initialSections = Array.from(div.children);
@@ -403,33 +351,8 @@ describe("VDOM Keys", () => {
     const section2 = initialSections[1];
 
     // Reorder sections
-    const newVNode = jsx("div", {
-      children: [
-        jsx(
-          "section",
-          {
-            children: [
-              jsx("h2", { children: "Section 2" }),
-              jsx("p", { children: "Content 2" }),
-            ],
-          },
-          "section2"
-        ),
-        jsx(
-          "section",
-          {
-            children: [
-              jsx("h2", { children: "Section 1" }),
-              jsx("p", { children: "Content 1" }),
-            ],
-          },
-          "section1"
-        ),
-      ],
-    });
-
-    // Patch to reorder
-    newVNode.patch(oldVNode);
+    stateFn!.order = ["section2", "section1"];
+    await waitForUpdate();
 
     const newSections = Array.from(div.children);
 
@@ -441,21 +364,30 @@ describe("VDOM Keys", () => {
     expect(newSections[1].children[0].textContent).toBe("Section 1");
   });
 
-  it("should handle mixed keys and non-keyed elements", () => {
-    // Create a container element
+  it("should handle mixed keys and non-keyed elements", async () => {
     const container = document.createElement("div");
+    let stateFn: ReturnType<
+      typeof createState<{ items: Array<{ key?: string; text: string }> }>
+    >;
 
-    // Create initial list with some keyed and some non-keyed
-    const oldVNode = jsx("ul", {
-      children: [
-        jsx("li", { children: "Item A" }, "a"),
-        jsx("li", { children: "Item B" }), // No key
-        jsx("li", { children: "Item C" }, "c"),
-      ],
-    });
+    const App = () => {
+      const state = createState({
+        items: [
+          { key: "a", text: "Item A" },
+          { text: "Item B" },
+          { key: "c", text: "Item C" },
+        ],
+      });
+      stateFn = state;
+      return () =>
+        jsx("ul", {
+          children: state.items.map((item) =>
+            jsx("li", { children: item.text }, item.key)
+          ),
+        });
+    };
 
-    // Render the initial list
-    render(oldVNode, container);
+    render(jsx(App, {}), container);
 
     const ul = container.children[0] as HTMLElement;
 
@@ -465,16 +397,12 @@ describe("VDOM Keys", () => {
     expect(ul.children[2].textContent).toBe("Item C");
 
     // Reorder with mixed keys
-    const newVNode = jsx("ul", {
-      children: [
-        jsx("li", { children: "Item C" }, "c"),
-        jsx("li", { children: "Item B Modified" }), // No key, content changed
-        jsx("li", { children: "Item A" }, "a"),
-      ],
-    });
-
-    // Patch to reorder
-    newVNode.patch(oldVNode);
+    stateFn!.items = [
+      { key: "c", text: "Item C" },
+      { text: "Item B Modified" },
+      { key: "a", text: "Item A" },
+    ];
+    await waitForUpdate();
 
     expect(ul.children.length).toBe(3);
     expect(ul.children[0].textContent).toBe("Item C");

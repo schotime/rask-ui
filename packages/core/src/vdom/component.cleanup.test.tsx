@@ -130,7 +130,7 @@ describe("Component Cleanup", () => {
     expect(callback).toHaveBeenCalledTimes(2);
 
     stateFn!.show = false;
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await vi.runAllTimersAsync();
 
     // After cleanup, interval should be cleared
     vi.advanceTimersByTime(2000);
@@ -165,7 +165,7 @@ describe("Component Cleanup", () => {
     render(jsx(App, {}), container);
 
     stateFn!.show = false;
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await vi.runAllTimersAsync();
 
     // After cleanup, timeout should be cleared
     vi.advanceTimersByTime(2000);
@@ -298,6 +298,7 @@ describe("Component Cleanup", () => {
 
   it("should handle cleanup errors gracefully", async () => {
     const container = document.createElement("div");
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const cleanup1 = vi.fn(() => {
       throw new Error("Cleanup error");
     });
@@ -319,13 +320,21 @@ describe("Component Cleanup", () => {
 
     render(jsx(App, {}), container);
 
-    // Should throw when cleanup errors occur
+    // Trigger unmount - errors should be logged but not thrown
     stateFn!.show = false;
-    await expect(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }).rejects.toThrow("Cleanup error");
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
+    // Both cleanups should have been called
     expect(cleanup1).toHaveBeenCalledTimes(1);
+    expect(cleanup2).toHaveBeenCalledTimes(1);
+
+    // Error should have been logged
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Error during cleanup:",
+      expect.objectContaining({ message: "Cleanup error" })
+    );
+
+    consoleErrorSpy.mockRestore();
   });
 
   it("should cleanup component with state and effects", async () => {
@@ -359,7 +368,7 @@ describe("Component Cleanup", () => {
     expect(updateCallback).toHaveBeenCalledTimes(5);
 
     stateFn!.show = false;
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await vi.runAllTimersAsync();
 
     expect(cleanupFn).toHaveBeenCalledTimes(1);
 
@@ -400,7 +409,7 @@ describe("Component Cleanup", () => {
     expect(capturedValue).toBe(42);
   });
 
-  it.only("should cleanup parent and child components", async () => {
+  it("should cleanup parent and child components", async () => {
     const container = document.createElement("div");
     const parentCleanup = vi.fn();
     const childCleanup = vi.fn();
