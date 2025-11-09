@@ -413,7 +413,7 @@ describe("VDOM Edge Cases", () => {
       expect(div.getAttribute("data-value")).toBeNull();
     });
 
-    it.only("should remove event listener when patching to null", async () => {
+    it("should remove event listener when patching to null", async () => {
       const container = document.createElement("div");
       let stateFn: { doClick: boolean } | undefined;
 

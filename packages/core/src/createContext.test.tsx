@@ -85,12 +85,12 @@ describe("createContext", () => {
     }).toThrow("You can not inject context outside component setup");
   });
 
-  it("should throw error when getting context outside component", () => {
+  it.only("should throw error when getting context outside component", () => {
     const ThemeContext = createContext<{ theme: string }>();
 
     expect(() => {
       ThemeContext.get();
-    }).toThrow("You can not get context outside component setup");
+    }).toThrow("No current root");
   });
 
   it("should allow overriding context in nested components", () => {

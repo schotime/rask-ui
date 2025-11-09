@@ -5,9 +5,6 @@ export function ErrorBoundary(props: {
   children: any;
 }) {
   const component = getCurrentComponent();
-  // Access .error during setup to ensure the error signal is created
-  // This allows child errors to be caught even during initial render
-  component.error;
 
   return () => {
     if (component.error) {

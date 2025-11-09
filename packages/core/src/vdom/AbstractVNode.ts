@@ -109,7 +109,7 @@ export abstract class AbstractVNode {
         delete oldKeys[key];
       } else if (this.canPatch(prevChild, newChild)) {
         // Compatible types - patch and reuse old VNode
-        prevChild.patch(newChild);
+        prevChild.patch(newChild as any);
         result.push(prevChild);
         delete oldKeys[key];
       } else {

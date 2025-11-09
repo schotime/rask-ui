@@ -215,14 +215,16 @@ describe("Integration Tests", () => {
     expect(document.querySelector(".content")).toBeNull();
   });
 
-  it("should handle list rendering", async () => {
+  it.only("should handle list rendering", async () => {
     function TodoList() {
       const state = createState({ items: ["Item 1", "Item 2"] });
 
       return () => (
         <div>
           <button
-            onClick={() => state.items.push(`Item ${state.items.length + 1}`)}
+            onClick={() => {
+              state.items.push(`Item ${state.items.length + 1}`);
+            }}
           >
             Add
           </button>

@@ -199,7 +199,7 @@ describe("Complex Rendering", () => {
     });
   });
 
-  it.only("should handle components that change their return structure based on state", async () => {
+  it("should handle components that change their return structure based on state", async () => {
     let globalState: { mode: "list" | "grid" | "table" } | undefined;
 
     const DynamicComponent = () => {
@@ -284,7 +284,6 @@ describe("Complex Rendering", () => {
     globalState!.mode = "grid";
     await vi.runAllTimersAsync();
 
-    console.log(container.innerHTML);
     expect(container.querySelector("h2")?.textContent).toBe("Mode: grid");
     expect(container.querySelectorAll(".grid").length).toBe(2);
     expect(container.querySelectorAll(".card").length).toBe(6);
@@ -483,10 +482,6 @@ describe("Complex Rendering", () => {
     // Increment count
     globalState!.count = 5;
     await vi.runAllTimersAsync();
-
-    return;
-
-    console.log(container.innerHTML);
 
     expect(container.querySelectorAll(".card h4")[0].textContent).toBe(
       "Card 5"

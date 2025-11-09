@@ -26,7 +26,7 @@ describe("ErrorBoundary", () => {
     unmount();
   });
 
-  it.only("should catch errors thrown in child components", async () => {
+  it("should catch errors thrown in child components", async () => {
     function ThrowingChild() {
       return () => {
         throw new Error("Child component error");

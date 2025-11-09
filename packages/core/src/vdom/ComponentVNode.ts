@@ -52,9 +52,16 @@ import { currentRoot } from "./RootVNode";
 
 export function getCurrentComponent() {
   if (!currentRoot) {
-    return null;
+    throw new Error("No current root");
   }
-  return currentRoot.componentStack[0] || null;
+
+  const currentComponent = currentRoot.componentStack[0];
+
+  if (!currentComponent) {
+    throw new Error("No current component");
+  }
+
+  return currentComponent;
 }
 
 export function onMount(cb: () => void) {
@@ -144,11 +151,12 @@ export class ComponentVNode extends AbstractVNode {
         this.root?.setAsCurrent();
         const newChildren = executeRender();
         this.children = this.patchChildren(newChildren);
+
         this.parent?.rerender();
         this.root?.flushLifecycle();
         this.root?.clearCurrent();
       }),
-      reactiveProps: createState(this.props),
+      reactiveProps: createReactiveProps(this.props),
       get error() {
         if (!errorSignal) {
           errorSignal = new Signal();
@@ -160,14 +168,8 @@ export class ComponentVNode extends AbstractVNode {
         return error;
       },
       notifyError(childError) {
-        console.log("notifyError called:", {
-          childError,
-          hasErrorSignal: !!errorSignal,
-          instanceParent: !!instance.parent,
-        });
         if (errorSignal) {
           error = childError;
-          console.log("Setting error and notifying signal");
           errorSignal.notify();
         } else if (instance.parent) {
           let parent: VNode | undefined = instance.parent;
@@ -176,7 +178,6 @@ export class ComponentVNode extends AbstractVNode {
             parent = parent?.parent;
           }
 
-          console.log("Bubbling to parent:", parent);
           parent.instance?.notifyError(childError);
         } else {
           throw childError;
@@ -228,4 +229,31 @@ export class ComponentVNode extends AbstractVNode {
       });
     });
   }
+}
+
+function createReactiveProps(props: Record<string, unknown>) {
+  const reactiveProps = {} as any;
+
+  for (const prop in props) {
+    const signal = new Signal();
+    Object.defineProperty(reactiveProps, prop, {
+      get() {
+        const observer = getCurrentObserver();
+
+        if (observer) {
+          observer.subscribeSignal(signal);
+        }
+
+        return props[prop];
+      },
+      set(value) {
+        if (props[prop] !== value) {
+          props[prop] = value;
+          signal.notify();
+        }
+      },
+    });
+  }
+
+  return reactiveProps;
 }
