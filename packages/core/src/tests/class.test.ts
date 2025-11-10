@@ -67,6 +67,7 @@ describe("Class Property Support", () => {
 
     const div = container.querySelector("div");
     expect(div?.className).toBe("");
+    expect(div?.hasAttribute("class")).toBe(false);
   });
 
   it("should handle all false object notation", () => {
@@ -84,6 +85,7 @@ describe("Class Property Support", () => {
 
     const div = container.querySelector("div");
     expect(div?.className).toBe("");
+    expect(div?.hasAttribute("class")).toBe(false);
   });
 
   it("should update classes when object notation changes", async () => {
@@ -181,6 +183,65 @@ describe("Class Property Support", () => {
 
     const div = container.querySelector("div");
     expect(div?.className).toBe("");
+    expect(div?.hasAttribute("class")).toBe(false);
+  });
+
+  it("should remove class attribute when empty string is provided", () => {
+    const container = document.createElement("div");
+
+    render(jsx("div", { class: "" }), container);
+
+    const div = container.querySelector("div");
+    expect(div?.hasAttribute("class")).toBe(false);
+  });
+
+  it("should remove class attribute when null is provided", () => {
+    const container = document.createElement("div");
+
+    render(jsx("div", { class: null }), container);
+
+    const div = container.querySelector("div");
+    expect(div?.hasAttribute("class")).toBe(false);
+  });
+
+  it("should remove class attribute when object notation results in empty string", () => {
+    const container = document.createElement("div");
+
+    render(
+      jsx("div", {
+        class: {
+          active: false,
+          visible: false,
+        },
+      }),
+      container
+    );
+
+    const div = container.querySelector("div");
+    expect(div?.hasAttribute("class")).toBe(false);
+  });
+
+  it("should remove class attribute when updating from non-empty to empty string", async () => {
+    const container = document.createElement("div");
+    let stateFn: { className: string } | undefined;
+
+    const App = () => {
+      const state = createState({ className: "initial" });
+      stateFn = state;
+
+      return () => jsx("div", { class: state.className });
+    };
+
+    render(jsx(App, {}), container);
+
+    const div = container.querySelector("div");
+    expect(div?.className).toBe("initial");
+    expect(div?.hasAttribute("class")).toBe(true);
+
+    stateFn!.className = "";
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(div?.hasAttribute("class")).toBe(false);
   });
 
   it("should handle dynamic string class updates", async () => {

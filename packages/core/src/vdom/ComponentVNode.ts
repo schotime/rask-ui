@@ -207,8 +207,10 @@ export class ComponentVNode extends AbstractVNode {
     // Validate that render is a function
     if (typeof render !== "function") {
       const initError = new Error(
-        `Component must return a render function, but got ${(render as any) instanceof AbstractVNode ? "JSX" : typeof render}. ` +
-        `Components should return a function that returns JSX: \`return () => <div>...</div>\``
+        `Component must return a render function, but got ${
+          (render as any) instanceof AbstractVNode ? "JSX" : typeof render
+        }. ` +
+          `Components should return a function that returns JSX: \`return () => <div>...</div>\``
       );
       console.error("Error initializing component:", initError);
       error = initError;
@@ -239,7 +241,7 @@ export class ComponentVNode extends AbstractVNode {
     this.root?.pushComponent(this.instance!);
 
     for (const prop in newNode.props) {
-      (this.instance!.reactiveProps as any)[prop] = this.props[prop];
+      (this.instance!.reactiveProps as any)[prop] = newNode.props[prop];
     }
 
     this.root?.popComponent();

@@ -33,7 +33,7 @@ describe("createState", () => {
     expect(state.items).toEqual([1, 2, 3, 4]);
   });
 
-  it("should track property access in observers", () => {
+  it("should track property access in observers", async () => {
     const state = createState({ count: 0 });
     let renderCount = 0;
 
@@ -54,13 +54,9 @@ describe("createState", () => {
 
     state.count = 1;
 
-    // Wait for microtask
-    return new Promise((resolve) => {
-      queueMicrotask(() => {
-        expect(renderCount).toBeGreaterThan(0);
-        resolve(undefined);
-      });
-    });
+    // Wait for microtasks to complete
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(renderCount).toBeGreaterThan(0);
   });
 
   it("should handle property deletion", () => {
@@ -86,7 +82,7 @@ describe("createState", () => {
     expect(state[sym]).toBe("value");
   });
 
-  it("should notify observers only on actual changes", () => {
+  it("should notify observers only on actual changes", async () => {
     const state = createState({ count: 0 });
     let notifyCount = 0;
 
@@ -101,13 +97,9 @@ describe("createState", () => {
     state.count = 0; // Same value - should still notify per current implementation
     state.count = 0;
 
-    return new Promise((resolve) => {
-      queueMicrotask(() => {
-        // The implementation notifies even for same value, except for optimization cases
-        observer.dispose();
-        resolve(undefined);
-      });
-    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // The implementation notifies even for same value, except for optimization cases
+    observer.dispose();
   });
 
   it("should handle deeply nested objects", () => {

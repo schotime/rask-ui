@@ -80,12 +80,16 @@ export function setElementClass(
   value: string | Record<string, boolean> | null | undefined
 ) {
   if (value === null || value === undefined) {
-    elm.className = "";
+    elm.removeAttribute("class");
     return;
   }
 
   if (typeof value === "string") {
-    elm.className = value;
+    if (value === "") {
+      elm.removeAttribute("class");
+    } else {
+      elm.className = value;
+    }
     return;
   }
 
@@ -94,5 +98,9 @@ export function setElementClass(
     .filter((key) => value[key])
     .join(" ");
 
-  elm.className = classes;
+  if (classes === "") {
+    elm.removeAttribute("class");
+  } else {
+    elm.className = classes;
+  }
 }

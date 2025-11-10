@@ -19,10 +19,11 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
-    "build": "tsc && cp src/jsx.d.ts dist/",
+    "build": "tsc && cp src/jsx.d.ts dist/ && cp ../../README.md .",
     "dev": "tsc --watch",
     "test": "vitest",
     "test:ui": "vitest --ui",

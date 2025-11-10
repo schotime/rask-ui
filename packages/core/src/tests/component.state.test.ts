@@ -15,7 +15,7 @@ describe("Component State", () => {
     expect(container.children[0].textContent).toBe("0");
   });
 
-  it("should update state when value changes", () => {
+  it("should update state when value changes", async () => {
     const container = document.createElement("div");
     let stateFn: { count: number } | undefined;
 
@@ -26,11 +26,12 @@ describe("Component State", () => {
     };
 
     render(jsx(MyComponent, {}), container);
+    expect(container.children[0].textContent).toBe("0");
 
     stateFn!.count = 5;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    // After state update, component should re-render
-    // The implementation will handle this
+    expect(container.children[0].textContent).toBe("5");
   });
 
   it("should support multiple state values", () => {
@@ -53,7 +54,7 @@ describe("Component State", () => {
     expect(div.children[1].textContent).toBe("John");
   });
 
-  it("should support incremental state updates", () => {
+  it("should support incremental state updates", async () => {
     const container = document.createElement("div");
     let stateFn: { count: number } | undefined;
 
@@ -64,14 +65,15 @@ describe("Component State", () => {
     };
 
     render(jsx(MyComponent, {}), container);
+    expect(container.children[0].textContent).toBe("0");
 
     stateFn!.count = stateFn!.count + 1;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    // After state update, component should re-render
-    // The implementation will handle this
+    expect(container.children[0].textContent).toBe("1");
   });
 
-  it("should preserve state between re-renders", () => {
+  it("should preserve state between re-renders", async () => {
     const container = document.createElement("div");
     let stateFn: { count: number } | undefined;
 
@@ -82,13 +84,14 @@ describe("Component State", () => {
     };
 
     render(jsx(MyComponent, {}), container);
+    expect(container.children[0].textContent).toBe("0");
 
     stateFn!.count = 1;
     stateFn!.count = 2;
     stateFn!.count = 3;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    // State should be preserved across multiple updates
-    // The implementation will handle this
+    expect(container.children[0].textContent).toBe("3");
   });
 
   it("should support nested objects as state", () => {
@@ -127,7 +130,7 @@ describe("Component State", () => {
     expect(ul.children[2].textContent).toBe("3");
   });
 
-  it("should update nested state properties", () => {
+  it("should update nested state properties", async () => {
     const container = document.createElement("div");
     let stateFn: { user: { name: string; age: number } } | undefined;
 
@@ -146,12 +149,12 @@ describe("Component State", () => {
 
     stateFn!.user.name = "Bob";
     stateFn!.user.age = 30;
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    // After nested state update, component should re-render
-    // The implementation will handle this
+    expect(container.children[0].textContent).toBe("Bob is 30");
   });
 
-  it("should support array mutations", () => {
+  it("should support array mutations", async () => {
     const container = document.createElement("div");
     let stateFn: { items: number[] } | undefined;
 
@@ -168,9 +171,13 @@ describe("Component State", () => {
 
     render(jsx(MyComponent, {}), container);
 
-    stateFn!.items.push(4);
+    const ul = container.children[0] as HTMLUListElement;
+    expect(ul.children).toHaveLength(3);
 
-    // After array mutation, component should re-render
-    // The implementation will handle this
+    stateFn!.items.push(4);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(ul.children).toHaveLength(4);
+    expect(ul.children[3].textContent).toBe("4");
   });
 });
