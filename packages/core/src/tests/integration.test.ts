@@ -1,21 +1,21 @@
 import { describe, it, expect, vi } from "vitest";
-import { onCleanup, onMount } from "./vdom/ComponentVNode";
-import { render } from "./vdom";
-import { createState } from "./createState";
-import { createRef } from "./createRef";
-import { createContext } from "./createContext";
-import { ErrorBoundary } from "./error";
+import { onCleanup, onMount } from "../vdom/ComponentVNode";
+import { jsx, render } from "../vdom";
+import { createState } from "../createState";
+import { createRef } from "../createRef";
+import { createContext } from "../createContext";
+import { ErrorBoundary } from "../error";
 
 describe("Integration Tests", () => {
   it("should render a simple component", () => {
     function App() {
-      return () => <div>Hello World</div>;
+      return () => jsx("div", { children: "Hello World" });
     }
 
     const container = document.createElement("div");
     document.body.appendChild(container);
 
-    render(<App />, container);
+    render(jsx(App, {}), container);
 
     // After patch, container is replaced, so check body instead
     expect(document.body.textContent).toContain("Hello World");
@@ -25,18 +25,22 @@ describe("Integration Tests", () => {
     function Counter() {
       const state = createState({ count: 0 });
 
-      return () => (
-        <div>
-          <span>Count: {state.count}</span>
-          <button onClick={() => state.count++}>Increment</button>
-        </div>
-      );
+      return () =>
+        jsx("div", {
+          children: [
+            jsx("span", { children: `Count: ${state.count}` }),
+            jsx("button", {
+              onClick: () => state.count++,
+              children: "Increment",
+            }),
+          ],
+        });
     }
 
     const container = document.createElement("div");
     document.body.appendChild(container);
 
-    render(<Counter />, container);
+    render(jsx(Counter, {}), container);
 
     expect(document.body.textContent).toContain("Count: 0");
 
@@ -58,13 +62,13 @@ describe("Integration Tests", () => {
         expect(ref.current?.tagName).toBe("DIV");
       });
 
-      return () => <div ref={ref}>Test</div>;
+      return () => jsx("div", { ref, children: "Test" });
     }
 
     const container = document.createElement("div");
     document.body.appendChild(container);
 
-    render(<App />, container);
+    render(jsx(App, {}), container);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
   });
@@ -74,18 +78,18 @@ describe("Integration Tests", () => {
 
     function Child() {
       const theme = ThemeContext.get();
-      return () => <div class="child">{theme.theme}</div>;
+      return () => jsx("div", { class: "child", children: theme.theme });
     }
 
     function Parent() {
       ThemeContext.inject({ theme: "dark" });
-      return () => <Child />;
+      return () => jsx(Child, {});
     }
 
     const container = document.createElement("div");
     document.body.appendChild(container);
 
-    render(<Parent />, container);
+    render(jsx(Parent, {}), container);
 
     expect(document.body.textContent).toContain("dark");
   });
@@ -98,19 +102,21 @@ describe("Integration Tests", () => {
     }
 
     function App() {
-      return () => (
-        <ErrorBoundary
-          error={(error) => <div class="error">Error: {String(error)}</div>}
-        >
-          <ThrowingChild />
-        </ErrorBoundary>
-      );
+      return () =>
+        jsx(ErrorBoundary, {
+          error: (error: any) =>
+            jsx("div", {
+              class: "error",
+              children: `Error: ${String(error)}`,
+            }),
+          children: jsx(ThrowingChild, {}),
+        });
     }
 
     const container = document.createElement("div");
     document.body.appendChild(container);
 
-    render(<App />, container);
+    render(jsx(App, {}), container);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -127,19 +133,20 @@ describe("Integration Tests", () => {
     function Component() {
       onMount(mountFn);
       onCleanup(cleanupFn);
-      return () => <div>Test</div>;
+      return () => jsx("div", { children: "Test" });
     }
 
     function App() {
       const state = createState({ show: true });
       stateFn = state;
-      return () => (state.show ? <Component /> : <div>Empty</div>);
+      return () =>
+        state.show ? jsx(Component, {}) : jsx("div", { children: "Empty" });
     }
 
     const container = document.createElement("div");
     document.body.appendChild(container);
 
-    render(<App />, container);
+    render(jsx(App, {}), container);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -156,29 +163,27 @@ describe("Integration Tests", () => {
 
   it("should handle nested components", () => {
     function GrandChild() {
-      return () => <span>GrandChild</span>;
+      return () => jsx("span", { children: "GrandChild" });
     }
 
     function Child() {
-      return () => (
-        <div>
-          Child <GrandChild />
-        </div>
-      );
+      return () =>
+        jsx("div", {
+          children: ["Child ", jsx(GrandChild, {})],
+        });
     }
 
     function Parent() {
-      return () => (
-        <div>
-          Parent <Child />
-        </div>
-      );
+      return () =>
+        jsx("div", {
+          children: ["Parent ", jsx(Child, {})],
+        });
     }
 
     const container = document.createElement("div");
     document.body.appendChild(container);
 
-    render(<Parent />, container);
+    render(jsx(Parent, {}), container);
 
     expect(document.body.textContent).toContain("Parent");
     expect(document.body.textContent).toContain("Child");
@@ -189,18 +194,24 @@ describe("Integration Tests", () => {
     function App() {
       const state = createState({ show: true });
 
-      return () => (
-        <div>
-          <button onClick={() => (state.show = !state.show)}>Toggle</button>
-          {state.show ? <div class="content">Content</div> : null}
-        </div>
-      );
+      return () =>
+        jsx("div", {
+          children: [
+            jsx("button", {
+              onClick: () => (state.show = !state.show),
+              children: "Toggle",
+            }),
+            state.show
+              ? jsx("div", { class: "content", children: "Content" })
+              : null,
+          ],
+        });
     }
 
     const container = document.createElement("div");
     document.body.appendChild(container);
 
-    render(<App />, container);
+    render(jsx(App, {}), container);
 
     // Wait for initial render
     await new Promise((resolve) => setTimeout(resolve, 5));
@@ -219,28 +230,28 @@ describe("Integration Tests", () => {
     function TodoList() {
       const state = createState({ items: ["Item 1", "Item 2"] });
 
-      return () => (
-        <div>
-          <button
-            onClick={() => {
-              state.items.push(`Item ${state.items.length + 1}`);
-            }}
-          >
-            Add
-          </button>
-          <ul>
-            {state.items.map((item) => (
-              <li>{item}</li>
-            ))}
-          </ul>
-        </div>
-      );
+      return () =>
+        jsx("div", {
+          children: [
+            jsx("button", {
+              onClick: () => {
+                state.items.push(`Item ${state.items.length + 1}`);
+              },
+              children: "Add",
+            }),
+            jsx("ul", {
+              children: state.items.map((item) =>
+                jsx("li", { children: item })
+              ),
+            }),
+          ],
+        });
     }
 
     const container = document.createElement("div");
     document.body.appendChild(container);
 
-    render(<TodoList />, container);
+    render(jsx(TodoList, {}), container);
 
     expect(document.querySelectorAll("li").length).toBe(2);
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { jsx, render } from "./index";
+import { jsx, render } from "../vdom";
 
 describe("Component Props", () => {
   it("should pass string props to component", () => {
@@ -33,10 +33,7 @@ describe("Component Props", () => {
         });
     };
 
-    render(
-      jsx(MyComponent, { user: { name: "Alice", age: 25 } }),
-      container
-    );
+    render(jsx(MyComponent, { user: { name: "Alice", age: 25 } }), container);
 
     expect(container.children[0].textContent).toBe("Alice is 25");
   });

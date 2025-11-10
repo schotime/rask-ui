@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { jsx, render } from "./index";
+import { jsx, render } from "../vdom/index";
 import { createState } from "../createState";
 
 describe("VDOM Patch", () => {

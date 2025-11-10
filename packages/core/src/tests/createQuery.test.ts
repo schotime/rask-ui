@@ -1,9 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
-import { createQuery } from './createQuery';
+import { describe, it, expect, vi } from "vitest";
+import { createQuery } from "../createQuery";
 
-describe('createQuery', () => {
-  it('should start in pending state and fetch immediately', async () => {
-    const fetcher = vi.fn(() => Promise.resolve('data'));
+describe("createQuery", () => {
+  it("should start in pending state and fetch immediately", async () => {
+    const fetcher = vi.fn(() => Promise.resolve("data"));
     const query = createQuery(fetcher);
 
     expect(query.isPending).toBe(true);
@@ -14,33 +14,33 @@ describe('createQuery', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(query.isPending).toBe(false);
-    expect(query.data).toBe('data');
+    expect(query.data).toBe("data");
   });
 
-  it('should resolve to data state on success', async () => {
-    const fetcher = () => Promise.resolve({ id: 1, name: 'Test' });
+  it("should resolve to data state on success", async () => {
+    const fetcher = () => Promise.resolve({ id: 1, name: "Test" });
     const query = createQuery(fetcher);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(query.isPending).toBe(false);
-    expect(query.data).toEqual({ id: 1, name: 'Test' });
+    expect(query.data).toEqual({ id: 1, name: "Test" });
     expect(query.error).toBeNull();
   });
 
-  it('should resolve to error state on failure', async () => {
-    const fetcher = () => Promise.reject(new Error('Network error'));
+  it("should resolve to error state on failure", async () => {
+    const fetcher = () => Promise.reject(new Error("Network error"));
     const query = createQuery(fetcher);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(query.isPending).toBe(false);
     expect(query.data).toBeNull();
-    expect(query.error).toContain('Network error');
+    expect(query.error).toContain("Network error");
   });
 
-  it('should allow manual refetch', async () => {
-    const fetcher = vi.fn(() => Promise.resolve('data'));
+  it("should allow manual refetch", async () => {
+    const fetcher = vi.fn(() => Promise.resolve("data"));
     const query = createQuery(fetcher);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
@@ -57,39 +57,39 @@ describe('createQuery', () => {
     expect(query.isPending).toBe(false);
   });
 
-  it('should retain old data during refetch by default', async () => {
+  it("should retain old data during refetch by default", async () => {
     const fetcher = vi
       .fn()
-      .mockResolvedValueOnce('data1')
-      .mockResolvedValueOnce('data2');
+      .mockResolvedValueOnce("data1")
+      .mockResolvedValueOnce("data2");
 
     const query = createQuery(fetcher);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    expect(query.data).toBe('data1');
+    expect(query.data).toBe("data1");
 
     query.fetch();
 
     expect(query.isPending).toBe(true);
-    expect(query.data).toBe('data1'); // Old data retained
+    expect(query.data).toBe("data1"); // Old data retained
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    expect(query.data).toBe('data2');
+    expect(query.data).toBe("data2");
   });
 
-  it('should clear old data when force refetch is used', async () => {
+  it("should clear old data when force refetch is used", async () => {
     const fetcher = vi
       .fn()
-      .mockResolvedValueOnce('data1')
-      .mockResolvedValueOnce('data2');
+      .mockResolvedValueOnce("data1")
+      .mockResolvedValueOnce("data2");
 
     const query = createQuery(fetcher);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    expect(query.data).toBe('data1');
+    expect(query.data).toBe("data1");
 
     query.fetch(true); // Force refresh
 
@@ -98,10 +98,10 @@ describe('createQuery', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    expect(query.data).toBe('data2');
+    expect(query.data).toBe("data2");
   });
 
-  it('should cancel previous request on new fetch', async () => {
+  it("should cancel previous request on new fetch", async () => {
     let resolveFirst: (value: string) => void;
     let resolveSecond: (value: string) => void;
 
@@ -125,19 +125,19 @@ describe('createQuery', () => {
     query.fetch();
 
     // Resolve first (should be ignored due to cancellation)
-    resolveFirst!('first');
+    resolveFirst!("first");
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(query.data).toBeNull(); // First result ignored
 
     // Resolve second
-    resolveSecond!('second');
+    resolveSecond!("second");
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    expect(query.data).toBe('second');
+    expect(query.data).toBe("second");
   });
 
-  it('should handle rapid successive fetches', async () => {
+  it("should handle rapid successive fetches", async () => {
     let counter = 0;
     const fetcher = vi.fn(() => Promise.resolve(`data-${++counter}`));
     const query = createQuery(fetcher);
@@ -153,20 +153,20 @@ describe('createQuery', () => {
 
     // Only the last fetch should matter
     expect(fetcher).toHaveBeenCalledTimes(4); // Initial + 3 fetches
-    expect(query.data).toBe('data-4');
+    expect(query.data).toBe("data-4");
   });
 
-  it('should cancel on error and allow refetch', async () => {
+  it("should cancel on error and allow refetch", async () => {
     const fetcher = vi
       .fn()
-      .mockRejectedValueOnce(new Error('First error'))
-      .mockResolvedValueOnce('success');
+      .mockRejectedValueOnce(new Error("First error"))
+      .mockResolvedValueOnce("success");
 
     const query = createQuery(fetcher);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    expect(query.error).toContain('First error');
+    expect(query.error).toContain("First error");
     expect(query.data).toBeNull();
 
     query.fetch();
@@ -174,17 +174,17 @@ describe('createQuery', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(query.error).toBeNull();
-    expect(query.data).toBe('success');
+    expect(query.data).toBe("success");
   });
 
-  it('should handle AbortController cancellation correctly', async () => {
+  it("should handle AbortController cancellation correctly", async () => {
     const abortedPromise = new Promise((_, reject) => {
-      const error = new Error('Aborted');
-      error.name = 'AbortError';
+      const error = new Error("Aborted");
+      error.name = "AbortError";
       setTimeout(() => reject(error), 5);
     });
 
-    const successPromise = Promise.resolve('success');
+    const successPromise = Promise.resolve("success");
 
     const fetcher = vi
       .fn()
@@ -198,12 +198,12 @@ describe('createQuery', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    expect(query.data).toBe('success');
+    expect(query.data).toBe("success");
     expect(query.error).toBeNull();
   });
 
-  it('should expose reactive getters', async () => {
-    const fetcher = () => Promise.resolve('data');
+  it("should expose reactive getters", async () => {
+    const fetcher = () => Promise.resolve("data");
     const query = createQuery(fetcher);
 
     // Access getters
@@ -218,6 +218,6 @@ describe('createQuery', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(query.isPending).toBe(false);
-    expect(query.data).toBe('data');
+    expect(query.data).toBe("data");
   });
 });

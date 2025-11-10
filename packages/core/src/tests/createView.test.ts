@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest';
-import { createView } from './createView';
-import { createState } from './createState';
-import { Observer } from './observation';
+import { describe, it, expect } from "vitest";
+import { createView } from "../createView";
+import { createState } from "../createState";
+import { Observer } from "../observation";
 
-describe('createView', () => {
-  it('should merge two plain objects', () => {
+describe("createView", () => {
+  it("should merge two plain objects", () => {
     const a = { x: 1, y: 2 };
     const b = { z: 3 };
     const view = createView(a, b);
@@ -14,7 +14,7 @@ describe('createView', () => {
     expect(view.z).toBe(3);
   });
 
-  it('should allow later arguments to override earlier ones', () => {
+  it("should allow later arguments to override earlier ones", () => {
     const a = { x: 1, y: 2 };
     const b = { y: 3, z: 4 };
     const view = createView(a, b);
@@ -24,7 +24,7 @@ describe('createView', () => {
     expect(view.z).toBe(4);
   });
 
-  it('should maintain reactivity with reactive objects', async () => {
+  it("should maintain reactivity with reactive objects", async () => {
     const state = createState({ count: 0 });
     const view = createView(state);
 
@@ -54,7 +54,7 @@ describe('createView', () => {
     });
   });
 
-  it('should merge reactive and plain objects while maintaining reactivity', () => {
+  it("should merge reactive and plain objects while maintaining reactivity", () => {
     const state = createState({ count: 0 });
     const helpers = {
       increment() {
@@ -67,8 +67,8 @@ describe('createView', () => {
     const view = createView(state, helpers);
 
     expect(view.count).toBe(0);
-    expect(typeof view.increment).toBe('function');
-    expect(typeof view.decrement).toBe('function');
+    expect(typeof view.increment).toBe("function");
+    expect(typeof view.decrement).toBe("function");
 
     view.increment();
     expect(view.count).toBe(1);
@@ -77,26 +77,26 @@ describe('createView', () => {
     expect(view.count).toBe(0);
   });
 
-  it('should merge multiple reactive objects', () => {
+  it("should merge multiple reactive objects", () => {
     const state1 = createState({ count: 0 });
-    const state2 = createState({ name: 'Alice' });
+    const state2 = createState({ name: "Alice" });
     const state3 = createState({ age: 25 });
     const view = createView(state1, state2, state3);
 
     expect(view.count).toBe(0);
-    expect(view.name).toBe('Alice');
+    expect(view.name).toBe("Alice");
     expect(view.age).toBe(25);
 
     state1.count = 10;
-    state2.name = 'Bob';
+    state2.name = "Bob";
     state3.age = 30;
 
     expect(view.count).toBe(10);
-    expect(view.name).toBe('Bob');
+    expect(view.name).toBe("Bob");
     expect(view.age).toBe(30);
   });
 
-  it('should reflect changes in source objects', () => {
+  it("should reflect changes in source objects", () => {
     const source = { x: 1 };
     const view = createView(source);
 
@@ -106,20 +106,20 @@ describe('createView', () => {
     expect(view.x).toBe(2);
   });
 
-  it('should handle property override order correctly', () => {
+  it("should handle property override order correctly", () => {
     const a = { x: 1, y: 2, z: 3 };
     const b = { y: 20 };
     const c = { z: 30 };
     const view = createView(a, b, c);
 
-    expect(view.x).toBe(1);  // From a
+    expect(view.x).toBe(1); // From a
     expect(view.y).toBe(20); // From b (overrides a)
     expect(view.z).toBe(30); // From c (overrides a)
   });
 
-  it('should only include enumerable properties', () => {
+  it("should only include enumerable properties", () => {
     const obj = { x: 1 };
-    Object.defineProperty(obj, 'hidden', {
+    Object.defineProperty(obj, "hidden", {
       value: 42,
       enumerable: false,
     });
@@ -130,17 +130,17 @@ describe('createView', () => {
     expect((view as any).hidden).toBeUndefined();
   });
 
-  it('should handle symbol keys', () => {
-    const sym = Symbol('test');
-    const obj = { x: 1, [sym]: 'symbol value' };
+  it("should handle symbol keys", () => {
+    const sym = Symbol("test");
+    const obj = { x: 1, [sym]: "symbol value" };
     const view = createView(obj);
 
     expect(view.x).toBe(1);
-    expect((view as any)[sym]).toBe('symbol value');
+    expect((view as any)[sym]).toBe("symbol value");
   });
 
-  it('should track dependencies for each property independently', async () => {
-    const state = createState({ count: 0, name: 'Alice' });
+  it("should track dependencies for each property independently", async () => {
+    const state = createState({ count: 0, name: "Alice" });
     const view = createView(state);
 
     let countRenderCount = 0;
@@ -168,7 +168,7 @@ describe('createView', () => {
     });
 
     // Change name - should NOT trigger (not tracked)
-    state.name = 'Bob';
+    state.name = "Bob";
 
     await new Promise((resolve) => {
       queueMicrotask(() => {
@@ -189,7 +189,7 @@ describe('createView', () => {
     expect(nameRenderCount).toBe(0);
 
     // Change name - should trigger name observer
-    state.name = 'Charlie';
+    state.name = "Charlie";
 
     await new Promise((resolve) => {
       queueMicrotask(() => {
@@ -199,22 +199,22 @@ describe('createView', () => {
     });
   });
 
-  it('should return the same value type as source', () => {
+  it("should return the same value type as source", () => {
     const obj = { nums: [1, 2, 3], nested: { x: 1 } };
     const view = createView(obj);
 
     expect(Array.isArray(view.nums)).toBe(true);
     expect(view.nums).toEqual([1, 2, 3]);
-    expect(typeof view.nested).toBe('object');
+    expect(typeof view.nested).toBe("object");
     expect(view.nested.x).toBe(1);
   });
 
-  it('should handle empty merge', () => {
+  it("should handle empty merge", () => {
     const view = createView({});
     expect(Object.keys(view).length).toBe(0);
   });
 
-  it('should merge single object', () => {
+  it("should merge single object", () => {
     const obj = { x: 1, y: 2 };
     const view = createView(obj);
 
@@ -222,7 +222,7 @@ describe('createView', () => {
     expect(view.y).toBe(2);
   });
 
-  it('should maintain function context', () => {
+  it("should maintain function context", () => {
     const state = createState({ count: 0 });
     const methods = {
       increment() {
@@ -237,8 +237,8 @@ describe('createView', () => {
     expect(state.count).toBe(1);
   });
 
-  it('should work with reactive state and computed-like patterns', () => {
-    const state = createState({ firstName: 'John', lastName: 'Doe' });
+  it("should work with reactive state and computed-like patterns", () => {
+    const state = createState({ firstName: "John", lastName: "Doe" });
     const computed = {
       get fullName() {
         return `${state.firstName} ${state.lastName}`;
@@ -246,11 +246,11 @@ describe('createView', () => {
     };
     const view = createView(state, computed);
 
-    expect(view.firstName).toBe('John');
-    expect(view.lastName).toBe('Doe');
-    expect(view.fullName).toBe('John Doe');
+    expect(view.firstName).toBe("John");
+    expect(view.lastName).toBe("Doe");
+    expect(view.fullName).toBe("John Doe");
 
-    state.firstName = 'Jane';
-    expect(view.fullName).toBe('Jane Doe');
+    state.firstName = "Jane";
+    expect(view.fullName).toBe("Jane Doe");
   });
 });

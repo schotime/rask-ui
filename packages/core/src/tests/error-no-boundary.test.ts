@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { renderComponent } from "./test-setup";
+import { jsx } from "../vdom";
+import { renderComponent } from "../test-setup";
 
 describe("Error handling without ErrorBoundary", () => {
   it("should not infinite loop when component throws during render without ErrorBoundary", async () => {
@@ -9,7 +10,9 @@ describe("Error handling without ErrorBoundary", () => {
       renderCount++;
 
       if (renderCount > 20) {
-        throw new Error("Infinite loop detected - rendered more than 20 times!");
+        throw new Error(
+          "Infinite loop detected - rendered more than 20 times!"
+        );
       }
 
       return () => {
@@ -17,7 +20,7 @@ describe("Error handling without ErrorBoundary", () => {
       };
     }
 
-    const { container, unmount } = renderComponent(<ThrowingComponent />);
+    const { container, unmount } = renderComponent(jsx(ThrowingComponent, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -36,14 +39,18 @@ describe("Error handling without ErrorBoundary", () => {
       renderCount++;
 
       if (renderCount > 20) {
-        throw new Error("Infinite loop detected - rendered more than 20 times!");
+        throw new Error(
+          "Infinite loop detected - rendered more than 20 times!"
+        );
       }
 
       // Directly return JSX instead of a function
-      return <div>Direct JSX</div>;
+      return jsx("div", { children: "Direct JSX" });
     }
 
-    const { container, unmount } = renderComponent(<BadComponent />);
+    const { container, unmount } = renderComponent(
+      jsx(BadComponent as any, {})
+    );
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -63,21 +70,25 @@ describe("Error handling without ErrorBoundary", () => {
       initCount++;
 
       if (initCount > 20) {
-        throw new Error("Infinite loop detected - initialized more than 20 times!");
+        throw new Error(
+          "Infinite loop detected - initialized more than 20 times!"
+        );
       }
 
       return () => {
         renderCount++;
 
         if (renderCount > 20) {
-          throw new Error("Infinite loop detected - rendered more than 20 times!");
+          throw new Error(
+            "Infinite loop detected - rendered more than 20 times!"
+          );
         }
 
         throw new Error("Render error");
       };
     }
 
-    const { container, unmount } = renderComponent(<ComponentWithState />);
+    const { container, unmount } = renderComponent(jsx(ComponentWithState, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -101,7 +112,7 @@ describe("Error handling without ErrorBoundary", () => {
       }
 
       // Directly return JSX instead of a function
-      return <span>Direct JSX from child</span>;
+      return jsx("span", { children: "Direct JSX from child" });
     }
 
     function GoodParent() {
@@ -111,15 +122,16 @@ describe("Error handling without ErrorBoundary", () => {
         throw new Error("Infinite loop detected in parent!");
       }
 
-      return () => (
-        <div>
-          <h1>Parent</h1>
-          <BadChild />
-        </div>
-      );
+      return () =>
+        jsx("div", {
+          children: [
+            jsx("h1", { children: "Parent" }),
+            jsx(BadChild as any, {}),
+          ],
+        });
     }
 
-    const { container, unmount } = renderComponent(<GoodParent />);
+    const { container, unmount } = renderComponent(jsx(GoodParent, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -159,15 +171,13 @@ describe("Error handling without ErrorBoundary", () => {
         throw new Error("Infinite loop detected in parent!");
       }
 
-      return () => (
-        <div>
-          <h1>Parent</h1>
-          <BadChild />
-        </div>
-      );
+      return () =>
+        jsx("div", {
+          children: [jsx("h1", { children: "Parent" }), jsx(BadChild, {})],
+        });
     }
 
-    const { container, unmount } = renderComponent(<GoodParent />);
+    const { container, unmount } = renderComponent(jsx(GoodParent, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -191,29 +201,30 @@ describe("Error handling without ErrorBoundary", () => {
     function BadChild1() {
       child1InitCount++;
       if (child1InitCount > 20) throw new Error("Child1 loop!");
-      return <div>Direct JSX 1</div>;
+      return jsx("div", { children: "Direct JSX 1" });
     }
 
     function BadChild2() {
       child2InitCount++;
       if (child2InitCount > 20) throw new Error("Child2 loop!");
-      return <span>Direct JSX 2</span>;
+      return jsx("span", { children: "Direct JSX 2" });
     }
 
     function GoodParent() {
       parentRenderCount++;
       if (parentRenderCount > 20) throw new Error("Parent loop!");
 
-      return () => (
-        <div>
-          <h1>Parent</h1>
-          <BadChild1 />
-          <BadChild2 />
-        </div>
-      );
+      return () =>
+        jsx("div", {
+          children: [
+            jsx("h1", { children: "Parent" }),
+            jsx(BadChild1 as any, {}),
+            jsx(BadChild2 as any, {}),
+          ],
+        });
     }
 
-    const { container, unmount } = renderComponent(<GoodParent />);
+    const { container, unmount } = renderComponent(jsx(GoodParent, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 

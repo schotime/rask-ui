@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { AbstractVNode } from "./AbstractVNode";
-import { VNode } from "./types";
+import { describe, it, expect } from "vitest";
+import { AbstractVNode } from "../vdom/AbstractVNode";
+import { VNode } from "../vdom/types";
 
 // Helper to convert MockVNode arrays to VNode arrays
 const toVNodes = (nodes: MockVNode[]): VNode[] => nodes as unknown as VNode[];
@@ -96,7 +96,9 @@ describe("patchChildren (new approach: keep old, patch in new)", () => {
       const newChild2 = new MockVNode("b");
       const newChild3 = new MockVNode("c");
 
-      const result = parent.patchChildren(toVNodes([newChild1, newChild2, newChild3]));
+      const result = parent.patchChildren(
+        toVNodes([newChild1, newChild2, newChild3])
+      );
 
       // OLD children should be patched with new children
       expect(oldChild1.patchCalls).toBe(1);
@@ -132,7 +134,9 @@ describe("patchChildren (new approach: keep old, patch in new)", () => {
       const newChild2 = new MockVNode("a");
       const newChild3 = new MockVNode("b");
 
-      const result = parent.patchChildren(toVNodes([newChild1, newChild2, newChild3]));
+      const result = parent.patchChildren(
+        toVNodes([newChild1, newChild2, newChild3])
+      );
 
       // Old nodes should be patched with corresponding new nodes by key
       expect(oldChild1.patchedWith).toBe(newChild2); // a->a
@@ -163,7 +167,9 @@ describe("patchChildren (new approach: keep old, patch in new)", () => {
       const newChild2 = new MockVNode("c");
       const newChild3 = new MockVNode("d");
 
-      const result = parent.patchChildren(toVNodes([newChild1, newChild2, newChild3]));
+      const result = parent.patchChildren(
+        toVNodes([newChild1, newChild2, newChild3])
+      );
 
       // a and c should be patched (reused)
       expect(oldChild1.patchedWith).toBe(newChild1);
@@ -217,7 +223,9 @@ describe("patchChildren (new approach: keep old, patch in new)", () => {
       const newChild2 = new MockVNode();
       const newChild3 = new MockVNode();
 
-      const result = parent.patchChildren(toVNodes([newChild1, newChild2, newChild3]));
+      const result = parent.patchChildren(
+        toVNodes([newChild1, newChild2, newChild3])
+      );
 
       // Should patch by index: 0->0, 1->1, 2->2
       expect(oldChild1.patchedWith).toBe(newChild1);
@@ -243,12 +251,9 @@ describe("patchChildren (new approach: keep old, patch in new)", () => {
       const newChild3 = new MockVNode();
       const newChild4 = new MockVNode();
 
-      const result = parent.patchChildren(toVNodes([
-        newChild1,
-        newChild2,
-        newChild3,
-        newChild4,
-      ]));
+      const result = parent.patchChildren(
+        toVNodes([newChild1, newChild2, newChild3, newChild4])
+      );
 
       // First two should be patched (reused)
       expect(oldChild1.patchedWith).toBe(newChild1);
@@ -311,7 +316,9 @@ describe("patchChildren (new approach: keep old, patch in new)", () => {
       const newChild2 = new MockVNode(); // key: undefined -> index 1
       const newChild3 = new MockVNode("c"); // key: "c"
 
-      const result = parent.patchChildren(toVNodes([newChild1, newChild2, newChild3]));
+      const result = parent.patchChildren(
+        toVNodes([newChild1, newChild2, newChild3])
+      );
 
       // Keyed children should patch by key
       expect(oldChild1.patchedWith).toBe(newChild1);
@@ -384,7 +391,9 @@ describe("patchChildren (new approach: keep old, patch in new)", () => {
       const newChild2 = new MockVNode("item-1");
       const newChild3 = new MockVNode("item-2");
 
-      const result = parent.patchChildren(toVNodes([newChild1, newChild2, newChild3]));
+      const result = parent.patchChildren(
+        toVNodes([newChild1, newChild2, newChild3])
+      );
 
       // New item should be mounted
       expect(newChild1.mountCalls).toBe(1);
@@ -410,7 +419,9 @@ describe("patchChildren (new approach: keep old, patch in new)", () => {
       const newChild2 = new MockVNode("item-2");
       const newChild3 = new MockVNode("item-3"); // New item at end
 
-      const result = parent.patchChildren(toVNodes([newChild1, newChild2, newChild3]));
+      const result = parent.patchChildren(
+        toVNodes([newChild1, newChild2, newChild3])
+      );
 
       // Existing items should be patched (reused)
       expect(oldChild1.patchedWith).toBe(newChild1);
@@ -460,7 +471,9 @@ describe("patchChildren (new approach: keep old, patch in new)", () => {
       const newChild2 = new MockVNode("b");
       const newChild3 = new MockVNode("c");
 
-      const result = parent.patchChildren(toVNodes([newChild1, newChild2, newChild3]));
+      const result = parent.patchChildren(
+        toVNodes([newChild1, newChild2, newChild3])
+      );
 
       // All should be mounted
       expect(newChild1.mountCalls).toBe(1);

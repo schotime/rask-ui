@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { jsx, render } from "./index";
+import { jsx, render } from "../vdom";
 import { createState } from "../createState";
 
 const waitForUpdate = () => new Promise((resolve) => setTimeout(resolve, 10));
@@ -100,7 +100,10 @@ describe("VDOM Keys", () => {
     const App = () => {
       const state = createState({
         order: ["first", "second", "third"],
-        values: { first: "First", second: "Second", third: "Third" } as Record<string, string>,
+        values: { first: "First", second: "Second", third: "Third" } as Record<
+          string,
+          string
+        >,
       });
       stateFn = state;
       return () =>

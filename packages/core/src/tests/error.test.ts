@@ -1,22 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { ErrorBoundary } from "./error";
-import { renderComponent } from "./test-setup";
+import { jsx } from "../vdom";
+import { ErrorBoundary } from "../error";
+import { renderComponent } from "../test-setup";
 
 describe("ErrorBoundary", () => {
   it("should render children when no error occurs", async () => {
     function SafeChild() {
-      return () => <div>Safe content</div>;
+      return () => jsx("div", { children: "Safe content" });
     }
 
     function TestComponent() {
-      return () => (
-        <ErrorBoundary error={(error) => <div>Error: {String(error)}</div>}>
-          <SafeChild />
-        </ErrorBoundary>
-      );
+      return () =>
+        jsx(ErrorBoundary, {
+          error: (error: any) =>
+            jsx("div", { children: `Error: ${String(error)}` }),
+          children: jsx(SafeChild, {}),
+        });
     }
 
-    const { container, unmount } = renderComponent(<TestComponent />);
+    const { container, unmount } = renderComponent(jsx(TestComponent, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -34,14 +36,15 @@ describe("ErrorBoundary", () => {
     }
 
     function TestComponent() {
-      return () => (
-        <ErrorBoundary error={(error) => <div>Error: {String(error)}</div>}>
-          <ThrowingChild />
-        </ErrorBoundary>
-      );
+      return () =>
+        jsx(ErrorBoundary, {
+          error: (error: any) =>
+            jsx("div", { children: `Error: ${String(error)}` }),
+          children: jsx(ThrowingChild, {}),
+        });
     }
 
-    const { container, unmount } = renderComponent(<TestComponent />);
+    const { container, unmount } = renderComponent(jsx(TestComponent, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -59,21 +62,21 @@ describe("ErrorBoundary", () => {
     }
 
     function TestComponent() {
-      return () => (
-        <ErrorBoundary
-          error={(error) => (
-            <div class="error-ui">
-              <h1>Oops!</h1>
-              <p>{String(error)}</p>
-            </div>
-          )}
-        >
-          <ThrowingChild />
-        </ErrorBoundary>
-      );
+      return () =>
+        jsx(ErrorBoundary, {
+          error: (error: any) =>
+            jsx("div", {
+              class: "error-ui",
+              children: [
+                jsx("h1", { children: "Oops!" }),
+                jsx("p", { children: String(error) }),
+              ],
+            }),
+          children: jsx(ThrowingChild, {}),
+        });
     }
 
-    const { container, unmount } = renderComponent(<TestComponent />);
+    const { container, unmount } = renderComponent(jsx(TestComponent, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -87,23 +90,23 @@ describe("ErrorBoundary", () => {
 
   it("should handle multiple children", async () => {
     function SafeChild1() {
-      return () => <div>Child 1</div>;
+      return () => jsx("div", { children: "Child 1" });
     }
 
     function SafeChild2() {
-      return () => <div>Child 2</div>;
+      return () => jsx("div", { children: "Child 2" });
     }
 
     function TestComponent() {
-      return () => (
-        <ErrorBoundary error={(error) => <div>Error: {String(error)}</div>}>
-          <SafeChild1 />
-          <SafeChild2 />
-        </ErrorBoundary>
-      );
+      return () =>
+        jsx(ErrorBoundary, {
+          error: (error: any) =>
+            jsx("div", { children: `Error: ${String(error)}` }),
+          children: [jsx(SafeChild1, {}), jsx(SafeChild2, {})],
+        });
     }
 
-    const { container, unmount } = renderComponent(<TestComponent />);
+    const { container, unmount } = renderComponent(jsx(TestComponent, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -121,18 +124,19 @@ describe("ErrorBoundary", () => {
     }
 
     function MiddleChild() {
-      return () => <DeepChild />;
+      return () => jsx(DeepChild, {});
     }
 
     function TestComponent() {
-      return () => (
-        <ErrorBoundary error={(error) => <div>Caught: {String(error)}</div>}>
-          <MiddleChild />
-        </ErrorBoundary>
-      );
+      return () =>
+        jsx(ErrorBoundary, {
+          error: (error: any) =>
+            jsx("div", { children: `Caught: ${String(error)}` }),
+          children: jsx(MiddleChild, {}),
+        });
     }
 
-    const { container, unmount } = renderComponent(<TestComponent />);
+    const { container, unmount } = renderComponent(jsx(TestComponent, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -150,16 +154,19 @@ describe("ErrorBoundary", () => {
     }
 
     function TestComponent() {
-      return () => (
-        <ErrorBoundary error={(error) => <div>Outer: {String(error)}</div>}>
-          <ErrorBoundary error={(error) => <div>Inner: {String(error)}</div>}>
-            <ThrowingChild />
-          </ErrorBoundary>
-        </ErrorBoundary>
-      );
+      return () =>
+        jsx(ErrorBoundary, {
+          error: (error: any) =>
+            jsx("div", { children: `Outer: ${String(error)}` }),
+          children: jsx(ErrorBoundary, {
+            error: (error: any) =>
+              jsx("div", { children: `Inner: ${String(error)}` }),
+            children: jsx(ThrowingChild, {}),
+          }),
+        });
     }
 
-    const { container, unmount } = renderComponent(<TestComponent />);
+    const { container, unmount } = renderComponent(jsx(TestComponent, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -178,14 +185,15 @@ describe("ErrorBoundary", () => {
     }
 
     function TestComponent() {
-      return () => (
-        <ErrorBoundary error={(error) => <div>Error: {String(error)}</div>}>
-          <ThrowingChild />
-        </ErrorBoundary>
-      );
+      return () =>
+        jsx(ErrorBoundary, {
+          error: (error: any) =>
+            jsx("div", { children: `Error: ${String(error)}` }),
+          children: jsx(ThrowingChild, {}),
+        });
     }
 
-    const { container, unmount } = renderComponent(<TestComponent />);
+    const { container, unmount } = renderComponent(jsx(TestComponent, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -202,20 +210,17 @@ describe("ErrorBoundary", () => {
     }
 
     function TestComponent() {
-      return () => (
-        <ErrorBoundary
-          error={(error: any) => (
-            <div>
-              Error: {error.message} (Code: {error.code})
-            </div>
-          )}
-        >
-          <ThrowingChild />
-        </ErrorBoundary>
-      );
+      return () =>
+        jsx(ErrorBoundary, {
+          error: (error: any) =>
+            jsx("div", {
+              children: `Error: ${error.message} (Code: ${error.code})`,
+            }),
+          children: jsx(ThrowingChild, {}),
+        });
     }
 
-    const { container, unmount } = renderComponent(<TestComponent />);
+    const { container, unmount } = renderComponent(jsx(TestComponent, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -229,18 +234,19 @@ describe("ErrorBoundary", () => {
     // Note: This test demonstrates the current behavior
     // In practice, error clearing would require additional implementation
     function SafeChild() {
-      return () => <div>Safe content</div>;
+      return () => jsx("div", { children: "Safe content" });
     }
 
     function TestComponent() {
-      return () => (
-        <ErrorBoundary error={(error) => <div>Error: {String(error)}</div>}>
-          <SafeChild />
-        </ErrorBoundary>
-      );
+      return () =>
+        jsx(ErrorBoundary, {
+          error: (error: any) =>
+            jsx("div", { children: `Error: ${String(error)}` }),
+          children: jsx(SafeChild, {}),
+        });
     }
 
-    const { container, unmount } = renderComponent(<TestComponent />);
+    const { container, unmount } = renderComponent(jsx(TestComponent, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -252,23 +258,26 @@ describe("ErrorBoundary", () => {
   it("should catch error when component returns JSX directly instead of function", async () => {
     function BadComponent() {
       // Wrong: returning JSX directly
-      return <div>Direct JSX</div>;
+      return jsx("div", { children: "Direct JSX" });
     }
 
     function TestComponent() {
-      return () => (
-        <ErrorBoundary error={(error) => <div>Error: {String(error)}</div>}>
-          <BadComponent />
-        </ErrorBoundary>
-      );
+      return () =>
+        jsx(ErrorBoundary, {
+          error: (error: any) =>
+            jsx("div", { children: `Error: ${String(error)}` }),
+          children: jsx(BadComponent as any, {}),
+        });
     }
 
-    const { container, unmount } = renderComponent(<TestComponent />);
+    const { container, unmount } = renderComponent(jsx(TestComponent, {}));
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(container.textContent).toContain("Error:");
-    expect(container.textContent).toContain("Component must return a render function");
+    expect(container.textContent).toContain(
+      "Component must return a render function"
+    );
 
     unmount();
   });

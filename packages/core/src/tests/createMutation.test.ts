@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-import { createMutation } from './createMutation';
+import { describe, it, expect, vi } from "vitest";
+import { createMutation } from "../createMutation";
 
-describe('createMutation', () => {
-  it('should start in idle state', () => {
+describe("createMutation", () => {
+  it("should start in idle state", () => {
     const mutator = vi.fn(() => Promise.resolve(null));
     const mutation = createMutation(mutator);
 
@@ -12,15 +12,15 @@ describe('createMutation', () => {
     expect(mutator).not.toHaveBeenCalled();
   });
 
-  it('should execute mutator when mutate is called', async () => {
+  it("should execute mutator when mutate is called", async () => {
     const mutator = vi.fn((params: string) => Promise.resolve(params));
     const mutation = createMutation(mutator);
 
-    mutation.mutate('test');
+    mutation.mutate("test");
 
     expect(mutation.isPending).toBe(true);
-    expect(mutation.params).toBe('test');
-    expect(mutator).toHaveBeenCalledWith('test');
+    expect(mutation.params).toBe("test");
+    expect(mutator).toHaveBeenCalledWith("test");
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -28,7 +28,7 @@ describe('createMutation', () => {
     expect(mutation.params).toBeNull();
   });
 
-  it('should handle successful mutations', async () => {
+  it("should handle successful mutations", async () => {
     const mutator = (params: { id: number }) => Promise.resolve(params);
     const mutation = createMutation(mutator);
 
@@ -43,22 +43,23 @@ describe('createMutation', () => {
     expect(mutation.params).toBeNull();
   });
 
-  it('should handle mutation errors', async () => {
-    const mutator = (params: string) => Promise.reject(new Error('Mutation failed'));
+  it("should handle mutation errors", async () => {
+    const mutator = (params: string) =>
+      Promise.reject(new Error("Mutation failed"));
     const mutation = createMutation(mutator);
 
-    mutation.mutate('test');
+    mutation.mutate("test");
 
     expect(mutation.isPending).toBe(true);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(mutation.isPending).toBe(false);
-    expect(mutation.error).toContain('Mutation failed');
+    expect(mutation.error).toContain("Mutation failed");
     expect(mutation.params).toBeNull();
   });
 
-  it('should cancel previous mutation on new mutate call', async () => {
+  it("should cancel previous mutation on new mutate call", async () => {
     let resolveFirst: (value: string) => void;
     let resolveSecond: (value: string) => void;
 
@@ -76,36 +77,36 @@ describe('createMutation', () => {
 
     const mutation = createMutation(mutator);
 
-    mutation.mutate('first' as any);
-    expect(mutation.params).toBe('first');
+    mutation.mutate("first" as any);
+    expect(mutation.params).toBe("first");
 
     // Trigger second mutation before first completes
-    mutation.mutate('second' as any);
-    expect(mutation.params).toBe('second');
+    mutation.mutate("second" as any);
+    expect(mutation.params).toBe("second");
 
     // Resolve first (should be ignored due to cancellation)
-    resolveFirst!('first');
+    resolveFirst!("first");
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(mutation.isPending).toBe(true); // Still pending second
 
     // Resolve second
-    resolveSecond!('second');
+    resolveSecond!("second");
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(mutation.isPending).toBe(false);
     expect(mutation.params).toBeNull();
   });
 
-  it('should handle rapid successive mutations', async () => {
+  it("should handle rapid successive mutations", async () => {
     let counter = 0;
     const mutator = vi.fn(() => Promise.resolve(++counter));
     const mutation = createMutation(mutator);
 
     // Rapid mutations
-    mutation.mutate('1' as any);
-    mutation.mutate('2' as any);
-    mutation.mutate('3' as any);
+    mutation.mutate("1" as any);
+    mutation.mutate("2" as any);
+    mutation.mutate("3" as any);
 
     await new Promise((resolve) => setTimeout(resolve, 20));
 
@@ -115,21 +116,21 @@ describe('createMutation', () => {
     expect(mutation.params).toBeNull();
   });
 
-  it('should clear error on successful retry', async () => {
+  it("should clear error on successful retry", async () => {
     const mutator = vi
       .fn()
-      .mockRejectedValueOnce(new Error('First error'))
-      .mockResolvedValueOnce('success');
+      .mockRejectedValueOnce(new Error("First error"))
+      .mockResolvedValueOnce("success");
 
     const mutation = createMutation(mutator);
 
-    mutation.mutate('attempt1' as any);
+    mutation.mutate("attempt1" as any);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    expect(mutation.error).toContain('First error');
+    expect(mutation.error).toContain("First error");
 
-    mutation.mutate('attempt2' as any);
+    mutation.mutate("attempt2" as any);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -137,13 +138,13 @@ describe('createMutation', () => {
     expect(mutation.isPending).toBe(false);
   });
 
-  it('should handle different parameter types', async () => {
+  it("should handle different parameter types", async () => {
     const mutator = vi.fn((params) => Promise.resolve(params));
     const mutation = createMutation(mutator);
 
     // Object params
-    mutation.mutate({ id: 1, name: 'test' });
-    expect(mutation.params).toEqual({ id: 1, name: 'test' });
+    mutation.mutate({ id: 1, name: "test" });
+    expect(mutation.params).toEqual({ id: 1, name: "test" });
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -156,30 +157,30 @@ describe('createMutation', () => {
 
     // String params
     const mutation3 = createMutation(mutator);
-    mutation3.mutate('string' as any);
-    expect(mutation3.params).toBe('string');
+    mutation3.mutate("string" as any);
+    expect(mutation3.params).toBe("string");
   });
 
-  it('should convert errors to strings', async () => {
-    const mutator = (params: string) => Promise.reject('string error');
+  it("should convert errors to strings", async () => {
+    const mutator = (params: string) => Promise.reject("string error");
     const mutation = createMutation(mutator);
 
-    mutation.mutate('test');
+    mutation.mutate("test");
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    expect(typeof mutation.error).toBe('string');
-    expect(mutation.error).toBe('string error');
+    expect(typeof mutation.error).toBe("string");
+    expect(mutation.error).toBe("string error");
   });
 
-  it('should handle AbortController cancellation correctly', async () => {
+  it("should handle AbortController cancellation correctly", async () => {
     const abortedPromise = new Promise((_, reject) => {
-      const error = new Error('Aborted');
-      error.name = 'AbortError';
+      const error = new Error("Aborted");
+      error.name = "AbortError";
       setTimeout(() => reject(error), 5);
     });
 
-    const successPromise = Promise.resolve('success');
+    const successPromise = Promise.resolve("success");
 
     const mutator = vi
       .fn()
@@ -188,10 +189,10 @@ describe('createMutation', () => {
 
     const mutation = createMutation(mutator);
 
-    mutation.mutate('first' as any);
+    mutation.mutate("first" as any);
 
     // Immediately trigger second mutation to abort first
-    mutation.mutate('second' as any);
+    mutation.mutate("second" as any);
 
     await new Promise((resolve) => setTimeout(resolve, 20));
 
@@ -199,20 +200,20 @@ describe('createMutation', () => {
     expect(mutation.error).toBeNull();
   });
 
-  it('should track params during pending state', () => {
+  it("should track params during pending state", () => {
     const mutator = () =>
       new Promise((resolve) => setTimeout(() => resolve(null), 100));
     const mutation = createMutation(mutator);
 
-    const params = { id: 123, action: 'update' };
+    const params = { id: 123, action: "update" };
     mutation.mutate(params);
 
     expect(mutation.isPending).toBe(true);
     expect(mutation.params).toEqual(params);
   });
 
-  it('should expose reactive getters', async () => {
-    const mutator = () => Promise.resolve('data');
+  it("should expose reactive getters", async () => {
+    const mutator = () => Promise.resolve("data");
     const mutation = createMutation(mutator);
 
     // Access getters before mutation
@@ -220,11 +221,11 @@ describe('createMutation', () => {
     expect(mutation.params).toBeNull();
     expect(mutation.error).toBeNull();
 
-    mutation.mutate('test' as any);
+    mutation.mutate("test" as any);
 
     // Access getters during mutation
     expect(mutation.isPending).toBe(true);
-    expect(mutation.params).toBe('test');
+    expect(mutation.params).toBe("test");
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 

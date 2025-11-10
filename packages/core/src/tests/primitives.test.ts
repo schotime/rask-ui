@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { jsx, render } from "./index";
+import { jsx, render } from "../vdom/index";
 
 describe("VDOM Primitives", () => {
   it("should render element with string child", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { jsx, render } from "./index";
+import { jsx, render } from "../vdom";
 import { createState } from "../createState";
 
 describe("Component State and Props Interaction", () => {

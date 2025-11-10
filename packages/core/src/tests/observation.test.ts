@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-import { Signal, Observer, getCurrentObserver } from './observation';
+import { describe, it, expect, vi } from "vitest";
+import { Signal, Observer, getCurrentObserver } from "../observation";
 
-describe('Signal', () => {
-  it('should allow subscribing to notifications', () => {
+describe("Signal", () => {
+  it("should allow subscribing to notifications", () => {
     const signal = new Signal();
     const callback = vi.fn();
 
@@ -12,7 +12,7 @@ describe('Signal', () => {
     expect(callback).toHaveBeenCalledTimes(1);
   });
 
-  it('should return a disposer function', () => {
+  it("should return a disposer function", () => {
     const signal = new Signal();
     const callback = vi.fn();
 
@@ -23,7 +23,7 @@ describe('Signal', () => {
     expect(callback).not.toHaveBeenCalled();
   });
 
-  it('should handle multiple subscribers', () => {
+  it("should handle multiple subscribers", () => {
     const signal = new Signal();
     const callback1 = vi.fn();
     const callback2 = vi.fn();
@@ -37,7 +37,7 @@ describe('Signal', () => {
     expect(callback2).toHaveBeenCalledTimes(1);
   });
 
-  it('should allow unsubscribing individual callbacks', () => {
+  it("should allow unsubscribing individual callbacks", () => {
     const signal = new Signal();
     const callback1 = vi.fn();
     const callback2 = vi.fn();
@@ -53,8 +53,8 @@ describe('Signal', () => {
   });
 });
 
-describe('Observer', () => {
-  it('should queue notifications in microtasks', async () => {
+describe("Observer", () => {
+  it("should queue notifications in microtasks", async () => {
     let callCount = 0;
     const observer = new Observer(() => {
       callCount++;
@@ -81,7 +81,7 @@ describe('Observer', () => {
     expect(callCount).toBe(1);
   });
 
-  it('should track signals during observation', () => {
+  it("should track signals during observation", () => {
     const callback = vi.fn();
     const observer = new Observer(callback);
     const signal = new Signal();
@@ -100,7 +100,7 @@ describe('Observer', () => {
     });
   });
 
-  it('should clear signals when observing again', async () => {
+  it("should clear signals when observing again", async () => {
     let callCount = 0;
     const observer = new Observer(() => {
       callCount++;
@@ -132,7 +132,7 @@ describe('Observer', () => {
     expect(callCount).toBe(1);
   });
 
-  it('should dispose of all signal subscriptions', async () => {
+  it("should dispose of all signal subscriptions", async () => {
     const callback = vi.fn();
     const observer = new Observer(callback);
     const signal = new Signal();
@@ -149,7 +149,7 @@ describe('Observer', () => {
     expect(callback).not.toHaveBeenCalled();
   });
 
-  it('should set current observer during observation', () => {
+  it("should set current observer during observation", () => {
     const observer = new Observer(() => {});
 
     expect(getCurrentObserver()).toBeUndefined();
@@ -161,7 +161,7 @@ describe('Observer', () => {
     expect(getCurrentObserver()).toBeUndefined();
   });
 
-  it('should handle nested observations with stack', () => {
+  it("should handle nested observations with stack", () => {
     const observer1 = new Observer(() => {});
     const observer2 = new Observer(() => {});
 
@@ -178,7 +178,7 @@ describe('Observer', () => {
     expect(getCurrentObserver()).toBeUndefined();
   });
 
-  it('should prevent duplicate notifications while queued', async () => {
+  it("should prevent duplicate notifications while queued", async () => {
     let callCount = 0;
     const observer = new Observer(() => {
       callCount++;

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { jsx, render } from "./index";
+import { jsx, render } from "../vdom";
 import { createState } from "../createState";
-import { Fragment } from "./FragmentVNode";
+import { Fragment } from "../vdom/FragmentVNode";
 
 describe("Component Return Types", () => {
   describe("Static Return Values", () => {

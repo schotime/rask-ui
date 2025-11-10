@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { jsx, render } from "./index";
+import { jsx, render } from "../vdom";
 import { createState } from "../createState";
 
 describe("Class Property Support", () => {
@@ -27,9 +27,9 @@ describe("Class Property Support", () => {
     render(
       jsx("div", {
         class: {
-          "active": true,
-          "visible": true,
-          "hidden": false,
+          active: true,
+          visible: true,
+          hidden: false,
         },
       }),
       container
@@ -140,7 +140,10 @@ describe("Class Property Support", () => {
   it("should prefer class over className when both provided", () => {
     const container = document.createElement("div");
 
-    render(jsx("div", { class: "from-class", className: "from-className" }), container);
+    render(
+      jsx("div", { class: "from-class", className: "from-className" }),
+      container
+    );
 
     const div = container.querySelector("div");
     // class should take precedence

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { jsx, render } from "./index";
-import { Fragment } from "./FragmentVNode";
+import { jsx, render } from "../vdom/index";
+import { Fragment } from "../vdom/FragmentVNode";
 import { createState } from "../createState";
 
 describe("VDOM Fragments", () => {

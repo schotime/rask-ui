@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { onCleanup } from "./ComponentVNode";
-import { jsx, render } from "./index";
+import { onCleanup } from "../vdom/ComponentVNode";
+import { jsx, render } from "../vdom/index";
 import { createState } from "../createState";
 
 describe("Component Cleanup", () => {
@@ -298,7 +298,9 @@ describe("Component Cleanup", () => {
 
   it("should handle cleanup errors gracefully", async () => {
     const container = document.createElement("div");
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
     const cleanup1 = vi.fn(() => {
       throw new Error("Cleanup error");
     });

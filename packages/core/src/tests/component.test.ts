@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { jsx, render } from "./index";
+import { jsx, render } from "../vdom";
 
 describe("ComponentVNode", () => {
   it("should mount a component that returns an element", () => {

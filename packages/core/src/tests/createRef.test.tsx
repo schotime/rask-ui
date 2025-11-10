@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { createRef } from "./createRef";
-import { render } from "./vdom";
+import { createRef } from "../createRef";
+import { render } from "../vdom";
 
 describe("createRef", () => {
   it("should create a ref with null initial value", () => {
