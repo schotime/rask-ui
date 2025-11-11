@@ -13,6 +13,16 @@ importers:
         version: 5.9.3
 
   packages/core:
+    dependencies:
+      inferno:
+        specifier: ^9.0.4
+        version: 9.0.4
+      inferno-create-element:
+        specifier: ^9.0.4
+        version: 9.0.4
+      inferno-vnode-flags:
+        specifier: ^9.0.4
+        version: 9.0.4
     devDependencies:
       '@vitest/ui':
         specifier: ^4.0.7
@@ -442,6 +452,9 @@ packages:
     resolution: {integrity: sha512-zDMqXh8Vs1CdRYZQ2M633m/SFgcjlu8RB8b/1h82i+6vpArF507NSYIWJHGlJaTWoS+imcnctmEz43txhbVkOw==}
     engines: {node: '>=20'}
 
+  csstype@3.1.3:
+    resolution: {integrity: sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw==}
+
   data-urls@6.0.0:
     resolution: {integrity: sha512-BnBS08aLUM+DKamupXs3w2tJJoqU+AkaE/+6vQxi/G/DPmIZFJJp9Dkb1kM03AZx8ADehDUZgsNxju3mPXZYIA==}
     engines: {node: '>=20'}
@@ -517,6 +530,15 @@ packages:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
     engines: {node: '>=0.10.0'}
 
+  inferno-create-element@9.0.4:
+    resolution: {integrity: sha512-fWBAkxiuSKfU6F8tGK5xfnjhT9ayplJZMYsY5JGUClzy5wnZGPXHgBlAV12WxtJKPfg1/9QBQW6WBExkLhos+g==}
+
+  inferno-vnode-flags@9.0.4:
+    resolution: {integrity: sha512-w8ZPbsp3/cteyySIs132Ud8h5wuqLslB5P2gtGDhTxcq57zr+y4p7AV0tRY1avqKWpPBByQIuoferuLUD+Cc8A==}
+
+  inferno@9.0.4:
+    resolution: {integrity: sha512-QvU22Ffsxc5LYKeHLSQa8/y3LFvV6Ukrdq1kEb/TtkeIVte54ZMU+OYhivKXUDfhJo8p1UXA8luEv3ISvVxDVw==}
+
   is-potential-custom-element-name@1.0.1:
     resolution: {integrity: sha512-bCYeRA2rVibKZd+s2625gGnGF/t7DSqDs4dP7CrLA1m7jKWz6pps0LpYLJN8Q64HtmPKJ1hrN3nzPNKFEKOUiQ==}
 
@@ -549,6 +571,10 @@ packages:
   nanoid@3.3.11:
     resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
+    hasBin: true
+
+  opencollective-postinstall@2.0.3:
+    resolution: {integrity: sha512-8AV/sCtuzUeTo8gQK5qDZzARrulB3egtLzFgteqB2tcT4Mw7B8Kt7JcDHmltjz6FOAHsvTevk70gZEbhM4ZS9Q==}
     hasBin: true
 
   parse5@8.0.0:
@@ -1055,6 +1081,8 @@ snapshots:
       '@csstools/css-syntax-patches-for-csstree': 1.0.15
       css-tree: 3.1.0
 
+  csstype@3.1.3: {}
+
   data-urls@6.0.0:
     dependencies:
       whatwg-mimetype: 4.0.0
@@ -1144,6 +1172,18 @@ snapshots:
     dependencies:
       safer-buffer: 2.1.2
 
+  inferno-create-element@9.0.4:
+    dependencies:
+      inferno: 9.0.4
+
+  inferno-vnode-flags@9.0.4: {}
+
+  inferno@9.0.4:
+    dependencies:
+      csstype: 3.1.3
+      inferno-vnode-flags: 9.0.4
+      opencollective-postinstall: 2.0.3
+
   is-potential-custom-element-name@1.0.1: {}
 
   jsdom@27.1.0:
@@ -1186,6 +1226,8 @@ snapshots:
   ms@2.1.3: {}
 
   nanoid@3.3.11: {}
+
+  opencollective-postinstall@2.0.3: {}
 
   parse5@8.0.0:
     dependencies:

@@ -46,7 +46,7 @@ Solid offers a simpler mental model with fine-grained reactivity. Updates don't 
 
 - Requires understanding special compiler transformations
 - Special components for expressing dynamic UIs (`<Show>`, `<For>`, etc.)
-- Function call syntax for accessing values: `count()`
+- Different signatures for accessing reactive values: `count()` VS `state.count`
 
 ### RASK: Best of Both Worlds
 
@@ -65,6 +65,8 @@ RASK gives you:
 - **No special syntax** - Access state properties directly, no function calls
 - **No compiler magic** - Plain JavaScript/TypeScript
 - **Simple mental model** - State updates trigger only affected components
+
+Built on [Inferno JS](https://github.com/infernojs/inferno).
 
 ## Getting Started
 
@@ -232,8 +234,6 @@ Reactive objects are implemented using JavaScript Proxies. When you access a pro
 - `createQuery()` - Never destructure query objects
 - `createMutation()` - Never destructure mutation objects
 - `createView()` - Never destructure view objects
-
-**Learn more:** This is the same design decision as [Solid.js reactive primitives](https://www.solidjs.com/tutorial/introduction_signals), which also use this pattern for fine-grained reactivity.
 
 ## API Reference
 
@@ -966,7 +966,7 @@ RASK is designed for performance:
 
 - **Fine-grained reactivity**: Only components that access changed state re-render
 - **No wasted renders**: Components skip re-render if reactive dependencies haven't changed
-- **Efficient DOM updates**: Powered by a custom virtual DOM implementation optimized for reactive components
+- **Efficient DOM updates**: Powered by Inferno's highly optimized virtual DOM reconciler
 - **No reconciler overhead for state**: State changes are direct, no diffing required
 - **Automatic cleanup**: Components and effects cleaned up automatically
 
@@ -977,7 +977,7 @@ RASK is designed for performance:
 | State management  | Complex (hooks, closures) | Simple (signals)         | Simple (proxies) |
 | UI expression     | Excellent                 | Limited                  | Excellent        |
 | Reactivity        | Coarse (component level)  | Fine-grained             | Fine-grained     |
-| Reconciler        | Yes                       | Limited                  | Yes (custom)     |
+| Reconciler        | Yes                       | Limited                  | Yes (Inferno)    |
 | Syntax            | JSX                       | JSX + special components | JSX              |
 | Compiler required | No                        | Yes                      | No               |
 | Learning curve    | Steep                     | Moderate                 | Gentle           |
