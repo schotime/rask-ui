@@ -128,7 +128,6 @@ class RaskComponent<P extends Props<any>> extends Component<
 }
 
 export function createComponent(props: Props<any>, key?: string) {
-  console.log(props);
   return createComponentVNode(
     VNodeFlags.ComponentClass,
     RaskComponent,

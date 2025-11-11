@@ -21,11 +21,14 @@ export function jsx<P>(
 ): any;
 export function jsx(type: any, { children, ...props }: any, key?: any): any {
   if (typeof type === "string") {
-    return createElement(type, { ...props, key }, ...children);
+    return createElement(
+      type,
+      { ...props, key },
+      ...(Array.isArray(children) ? children : [children])
+    );
   }
 
   if (type === ErrorBoundary) {
-    console.log("WTF");
     return createComponentVNode(
       VNodeFlags.Component,
       ErrorBoundary,
