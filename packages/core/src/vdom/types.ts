@@ -12,3 +12,16 @@ export type VNode =
   | RootVNode;
 
 export type Props = Record<string, unknown>;
+
+/**
+ * Bit flags to optimize VNode property checks.
+ * Pre-computed during VNode creation to avoid repeated conditional checks.
+ */
+export const enum VFlags {
+  None = 0,
+  HasProps = 1 << 0,       // Has any props at all
+  HasClass = 1 << 1,       // Has class or className prop
+  HasStyle = 1 << 2,       // Has style prop
+  HasEvents = 1 << 3,      // Has event listeners (onXxx props)
+  HasDataAttrs = 1 << 4,   // Has data-* or aria-* attributes
+}

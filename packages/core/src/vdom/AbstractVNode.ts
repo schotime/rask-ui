@@ -46,7 +46,15 @@ export abstract class AbstractVNode {
       throw new Error("This VNode has no element or children");
     }
 
-    return this.children.map((child) => child.getElements()).flat();
+    // Optimized: avoid intermediate arrays from map+flat
+    const result: Node[] = [];
+    for (let i = 0; i < this.children.length; i++) {
+      const childElms = this.children[i].getElements();
+      for (let j = 0; j < childElms.length; j++) {
+        result.push(childElms[j]);
+      }
+    }
+    return result;
   }
   getParentElement(): HTMLElement {
     let parent = this.parent;

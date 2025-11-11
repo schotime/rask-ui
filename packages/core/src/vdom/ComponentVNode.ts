@@ -4,6 +4,7 @@ import { FragmentVNode } from "./FragmentVNode";
 import { RootVNode } from "./RootVNode";
 import { Props, VNode } from "./types";
 import { normalizeChildren } from "./utils";
+import { flattenNodes } from "./dom-utils";
 
 export type ComponentChild =
   | VNode
@@ -241,9 +242,12 @@ export class ComponentVNode extends AbstractVNode {
     this.root?.popComponent();
     this.root?.clearCurrent();
 
-    const childElements = this.children
-      .map((child) => child.mount(this))
-      .flat();
+    // Optimized: avoid intermediate arrays from map+flat
+    const childResults: (Node | Node[])[] = [];
+    for (let i = 0; i < this.children.length; i++) {
+      childResults.push(this.children[i].mount(this));
+    }
+    const childElements = flattenNodes(childResults);
 
     // Queue onMount callbacks after children are mounted
     // This ensures refs and other child lifecycle hooks run before parent onMount

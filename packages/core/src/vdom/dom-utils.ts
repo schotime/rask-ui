@@ -1,3 +1,22 @@
+/**
+ * Efficiently flatten a Node or Node[] result without creating intermediate arrays.
+ * Used to optimize mount operations that return either Node or Node[].
+ */
+export function flattenNodes(items: (Node | Node[])[]): Node[] {
+  const result: Node[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (Array.isArray(item)) {
+      for (let j = 0; j < item.length; j++) {
+        result.push(item[j]);
+      }
+    } else {
+      result.push(item);
+    }
+  }
+  return result;
+}
+
 export function replaceElementsOf(
   parent: HTMLElement,
   newChildren: Node | Node[]

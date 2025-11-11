@@ -4,6 +4,7 @@ import { ElementVNode } from "./ElementVNode";
 import { RootVNode } from "./RootVNode";
 import { TextVNode } from "./TextVNode";
 import { VNode } from "./types";
+import { flattenNodes } from "./dom-utils";
 
 export const Fragment = Symbol("Fragment");
 
@@ -25,7 +26,12 @@ export class FragmentVNode extends AbstractVNode {
       this.root = parent?.root;
     }
 
-    return this.children.map((child) => child.mount(this)).flat();
+    // Optimized: avoid intermediate arrays from map+flat
+    const childResults: (Node | Node[])[] = [];
+    for (let i = 0; i < this.children.length; i++) {
+      childResults.push(this.children[i].mount(this));
+    }
+    return flattenNodes(childResults);
   }
   rerender(operations?: PatchOperation[]): void {
     this.parent?.rerender(operations);

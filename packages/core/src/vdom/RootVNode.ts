@@ -1,6 +1,7 @@
 import { AbstractVNode, PatchOperation } from "./AbstractVNode";
 import { VNode } from "./types";
 import { ComponentInstance } from "./ComponentVNode";
+import { flattenNodes } from "./dom-utils";
 
 // Global reference to the currently executing root
 // Safe because JS is single-threaded - only one render executes at a time
@@ -68,7 +69,13 @@ export class RootVNode extends AbstractVNode {
   }
 
   mount(): Node | Node[] {
-    return this.children.map((childNode) => childNode.mount(this)).flat();
+    // Optimized: avoid intermediate arrays from map+flat
+    const childResults: (Node | Node[])[] = [];
+    for (let i = 0; i < this.children.length; i++) {
+      childResults.push(this.children[i].mount(this));
+    }
+    const result = flattenNodes(childResults);
+    return result.length === 1 ? result[0] : result;
   }
   patch(): void {}
   rerender(operations?: PatchOperation[]): void {
