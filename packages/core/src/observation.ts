@@ -37,7 +37,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { queue } from "./batch";
+import { queue, QueuedCallback } from "./batch";
 
 // GLOBAL OBSERVER STACK (for dependency tracking)
 const observerStack: Observer[] = [];
@@ -155,7 +155,13 @@ export class Observer {
   private readonly onNotify: () => void;
 
   constructor(onNotify: () => void) {
-    this.onNotify = () => queue(onNotify);
+    const onNotifyQueued = onNotify as unknown as QueuedCallback;
+    onNotifyQueued.__queued = false;
+
+    this.onNotify = () => {
+      if (onNotifyQueued.__queued) return;
+      queue(onNotify as QueuedCallback);
+    };
   }
 
   /** Called from Signal.notify() */

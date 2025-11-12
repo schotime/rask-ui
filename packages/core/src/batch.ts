@@ -23,76 +23,99 @@ const INTERACTIVE_EVENTS = [
   "touchcancel",
 ];
 
+export type QueuedCallback = (() => void) & { __queued: boolean };
+
+const asyncQueue: Array<QueuedCallback> = [];
+const syncQueue: Array<QueuedCallback> = [];
+
 let inInteractive = 0;
-let hasAsyncQueue = false;
-let hasSyncQueue = false;
-const flushQueue = new Set<() => void>();
-const syncFlushQueue = new Set<() => void>();
+let asyncScheduled = false;
+let inSyncBatch = 0;
 
-function queueAsync() {
-  if (hasAsyncQueue) {
-    return;
-  }
-
-  hasAsyncQueue = true;
-  queueMicrotask(() => {
-    hasAsyncQueue = false;
-
-    if (!flushQueue.size) {
-      return;
-    }
-
-    const queued = Array.from(flushQueue);
-
-    flushQueue.clear();
-    queued.forEach((cb) => cb());
-  });
+function scheduleAsyncFlush() {
+  if (asyncScheduled) return;
+  asyncScheduled = true;
+  queueMicrotask(flushAsyncQueue);
 }
 
-export function queue(cb: () => void) {
-  if (hasSyncQueue) {
-    syncFlushQueue.add(cb);
+function flushAsyncQueue() {
+  asyncScheduled = false;
+  if (!asyncQueue.length) return;
+
+  for (let i = 0; i < asyncQueue.length; i++) {
+    const cb = asyncQueue[i];
+    asyncQueue[i] = undefined as any;
+    cb();
+    cb.__queued = false;
+  }
+  asyncQueue.length = 0;
+}
+
+function flushSyncQueue() {
+  if (!syncQueue.length) return;
+
+  for (let i = 0; i < syncQueue.length; i++) {
+    const cb = syncQueue[i];
+    syncQueue[i] = undefined as any;
+    cb();
+    cb.__queued = false;
+  }
+  syncQueue.length = 0;
+}
+
+export function queue(cb: QueuedCallback) {
+  cb.__queued = true;
+
+  if (inSyncBatch) {
+    syncQueue.push(cb);
     return;
   }
 
-  flushQueue.add(cb);
-
+  asyncQueue.push(cb);
   if (!inInteractive) {
-    queueAsync();
+    scheduleAsyncFlush();
   }
 }
 
 export function syncBatch(cb: () => void) {
-  hasSyncQueue = true;
-  cb();
-  hasSyncQueue = false;
-  const queued = Array.from(syncFlushQueue);
-  syncFlushQueue.clear();
-  queued.forEach((cb) => cb());
+  inSyncBatch++;
+  try {
+    cb();
+    // Only flush on successful completion
+    inSyncBatch--;
+    if (!inSyncBatch) {
+      flushSyncQueue();
+    }
+  } catch (e) {
+    inSyncBatch--;
+    throw e; // Re-throw without flushing
+  }
 }
 
 export function installEventBatching(target: EventTarget = document) {
-  const captureOptions = { capture: true, passive: true };
-  const bubbleOptions = { passive: true };
+  const captureOptions: AddEventListenerOptions = {
+    capture: true,
+    passive: true,
+  };
+  const bubbleOptions: AddEventListenerOptions = { passive: true };
+
   const onCapture = () => {
     inInteractive++;
-    // Backup in case of stop propagation
-    queueAsync();
+    scheduleAsyncFlush(); // backup in case of stopPropagation
   };
+
   const onBubble = () => {
-    if (--inInteractive === 0 && flushQueue.size) {
-      const queued = Array.from(flushQueue);
-      flushQueue.clear();
-      queued.forEach((cb) => cb());
+    if (--inInteractive === 0 && asyncQueue.length) {
+      // Flush inline once outermost interactive event finishes
+      flushAsyncQueue();
     }
   };
-  // 1) open scope before handlers
+
   INTERACTIVE_EVENTS.forEach((type) => {
     target.addEventListener(type, onCapture, captureOptions);
   });
 
   queueMicrotask(() => {
-    // 2) close + flush after handlers (bubble on window/document)
     INTERACTIVE_EVENTS.forEach((type) => {
       target.addEventListener(type, onBubble, bubbleOptions);
     });
