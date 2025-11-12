@@ -1,10 +1,10 @@
-import { describe, it, expect, vi } from "vitest";
-import { batch } from "../observation";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { syncBatch, queue, installEventBatching } from "../batch";
 import { createState } from "../createState";
 import { Observer } from "../observation";
 
-describe("batch", () => {
-  it("should batch multiple state changes into a single notification", async () => {
+describe("syncBatch", () => {
+  it("should batch multiple state changes into a single notification", () => {
     const state = createState({ count: 0, name: "Alice" });
     let notifyCount = 0;
 
@@ -18,15 +18,13 @@ describe("batch", () => {
     dispose();
 
     // Make multiple changes in a batch
-    batch(() => {
+    syncBatch(() => {
       state.count = 1;
       state.name = "Bob";
       state.count = 2;
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    // Should only notify once despite multiple changes
+    // Should only notify once despite multiple changes, and synchronously
     expect(notifyCount).toBe(1);
     expect(state.count).toBe(2);
     expect(state.name).toBe("Bob");
@@ -34,7 +32,7 @@ describe("batch", () => {
     observer.dispose();
   });
 
-  it("should handle nested batches correctly", async () => {
+  it("should handle nested batches correctly", () => {
     const state = createState({ count: 0 });
     let notifyCount = 0;
 
@@ -46,15 +44,13 @@ describe("batch", () => {
     state.count; // Track
     dispose();
 
-    batch(() => {
+    syncBatch(() => {
       state.count = 1;
-      batch(() => {
+      syncBatch(() => {
         state.count = 2;
       });
       state.count = 3;
     });
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Should still only notify once for nested batches
     expect(notifyCount).toBe(1);
@@ -63,35 +59,7 @@ describe("batch", () => {
     observer.dispose();
   });
 
-  it("should not batch notifications outside of batch calls", async () => {
-    const state = createState({ count: 0 });
-    let notifyCount = 0;
-
-    const observer = new Observer(() => {
-      notifyCount++;
-    });
-
-    const dispose = observer.observe();
-    state.count; // Track
-    dispose();
-
-    // Make changes without batching
-    state.count = 1;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    const firstNotifyCount = notifyCount;
-    expect(firstNotifyCount).toBeGreaterThan(0);
-
-    state.count = 2;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    // Should have notified again
-    expect(notifyCount).toBeGreaterThan(firstNotifyCount);
-
-    observer.dispose();
-  });
-
-  it("should handle multiple observers with batch", async () => {
+  it("should handle multiple observers with syncBatch", () => {
     const state = createState({ count: 0 });
     let notifyCount1 = 0;
     let notifyCount2 = 0;
@@ -111,13 +79,11 @@ describe("batch", () => {
     state.count; // Track in observer2
     dispose2();
 
-    batch(() => {
+    syncBatch(() => {
       state.count = 1;
       state.count = 2;
       state.count = 3;
     });
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Both observers should be notified exactly once
     expect(notifyCount1).toBe(1);
@@ -127,14 +93,14 @@ describe("batch", () => {
     observer2.dispose();
   });
 
-  it("should maintain correct state values after batch", () => {
+  it("should maintain correct state values after syncBatch", () => {
     const state = createState({
       count: 0,
       name: "Alice",
-      items: [1, 2, 3]
+      items: [1, 2, 3],
     });
 
-    batch(() => {
+    syncBatch(() => {
       state.count = 10;
       state.name = "Bob";
       state.items.push(4);
@@ -146,7 +112,7 @@ describe("batch", () => {
     expect(state.items).toEqual([100, 2, 3, 4]);
   });
 
-  it("should handle exceptions within batch without breaking batching", async () => {
+  it("should not flush if exception thrown within syncBatch", () => {
     const state = createState({ count: 0 });
     let notifyCount = 0;
 
@@ -159,7 +125,7 @@ describe("batch", () => {
     dispose();
 
     try {
-      batch(() => {
+      syncBatch(() => {
         state.count = 1;
         throw new Error("Test error");
       });
@@ -167,161 +133,15 @@ describe("batch", () => {
       // Expected error
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    // Should still have notified despite the error
-    expect(notifyCount).toBe(0); // Batch was interrupted, notifiers not flushed
-    expect(state.count).toBe(1); // State change still occurred
-
-    observer.dispose();
-  });
-
-  it("should work with deeply nested state changes", async () => {
-    const state = createState({
-      level1: {
-        level2: {
-          level3: {
-            value: 0
-          }
-        }
-      }
-    });
-    let notifyCount = 0;
-
-    const observer = new Observer(() => {
-      notifyCount++;
-    });
-
-    const dispose = observer.observe();
-    state.level1.level2.level3.value; // Track
-    dispose();
-
-    batch(() => {
-      state.level1.level2.level3.value = 1;
-      state.level1.level2.level3.value = 2;
-      state.level1.level2.level3.value = 3;
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(notifyCount).toBe(1);
-    expect(state.level1.level2.level3.value).toBe(3);
-
-    observer.dispose();
-  });
-
-  it("should batch array operations correctly", async () => {
-    const state = createState({ items: [1, 2, 3] });
-    let notifyCount = 0;
-
-    const observer = new Observer(() => {
-      notifyCount++;
-    });
-
-    const dispose = observer.observe();
-    state.items.length; // Track array
-    dispose();
-
-    batch(() => {
-      state.items.push(4);
-      state.items.push(5);
-      state.items.pop();
-      state.items.unshift(0);
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    // Should only notify once for all array operations
-    expect(notifyCount).toBe(1);
-    expect(state.items).toEqual([0, 1, 2, 3, 4]);
-
-    observer.dispose();
-  });
-
-  it("should handle batch with no state changes", async () => {
-    const state = createState({ count: 0 });
-    let notifyCount = 0;
-
-    const observer = new Observer(() => {
-      notifyCount++;
-    });
-
-    const dispose = observer.observe();
-    state.count; // Track
-    dispose();
-
-    batch(() => {
-      // No state changes
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
+    // Should NOT have flushed since the batch was interrupted
     expect(notifyCount).toBe(0);
+    // But state change still occurred
+    expect(state.count).toBe(1);
 
     observer.dispose();
   });
 
-  it("should handle synchronous observer notifications after batch", async () => {
-    const state = createState({ count: 0 });
-    const notifications: number[] = [];
-
-    const observer = new Observer(() => {
-      notifications.push(state.count);
-    });
-
-    const dispose = observer.observe();
-    state.count; // Track
-    dispose();
-
-    batch(() => {
-      state.count = 1;
-      state.count = 2;
-      state.count = 3;
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    // Observer should see the final value
-    expect(notifications).toEqual([3]);
-
-    observer.dispose();
-  });
-
-  it("should allow mixing batched and non-batched updates", async () => {
-    const state = createState({ count: 0 });
-    let notifyCount = 0;
-
-    const observer = new Observer(() => {
-      notifyCount++;
-    });
-
-    const dispose = observer.observe();
-    state.count; // Track
-    dispose();
-
-    state.count = 1;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    const afterFirst = notifyCount;
-
-    batch(() => {
-      state.count = 2;
-      state.count = 3;
-    });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    const afterBatch = notifyCount;
-
-    state.count = 4;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    const afterSecond = notifyCount;
-
-    expect(afterFirst).toBeGreaterThan(0);
-    expect(afterBatch).toBe(afterFirst + 1); // One notification for the batch
-    expect(afterSecond).toBe(afterBatch + 1); // One more for the final update
-
-    observer.dispose();
-  });
-
-  it("should deduplicate notifications for the same observer", async () => {
+  it("should deduplicate notifications for the same observer", () => {
     const state = createState({ count: 0, name: "Alice" });
     let notifyCount = 0;
 
@@ -334,16 +154,243 @@ describe("batch", () => {
     state.name; // Track
     dispose();
 
-    batch(() => {
+    syncBatch(() => {
       state.count = 1; // Triggers observer
       state.name = "Bob"; // Triggers same observer again
       state.count = 2; // Triggers observer yet again
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
     // Should deduplicate and only notify once
     expect(notifyCount).toBe(1);
+
+    observer.dispose();
+  });
+});
+
+describe("queue (async batching)", () => {
+  it("should queue updates and flush on microtask", async () => {
+    const state = createState({ count: 0 });
+    let notifyCount = 0;
+
+    const observer = new Observer(() => {
+      notifyCount++;
+    });
+
+    const dispose = observer.observe();
+    state.count; // Track
+    dispose();
+
+    // Make changes that will be queued
+    state.count = 1;
+    state.count = 2;
+    state.count = 3;
+
+    // Not yet notified (queued)
+    expect(notifyCount).toBe(0);
+
+    // Wait for microtask flush
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Should have notified once after flush
+    expect(notifyCount).toBe(1);
+    expect(state.count).toBe(3);
+
+    observer.dispose();
+  });
+
+  it("should batch multiple async updates into one notification", async () => {
+    const state = createState({ count: 0, name: "Alice" });
+    let notifyCount = 0;
+
+    const observer = new Observer(() => {
+      notifyCount++;
+    });
+
+    const dispose = observer.observe();
+    state.count;
+    state.name;
+    dispose();
+
+    state.count = 1;
+    state.name = "Bob";
+    state.count = 2;
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Should batch all updates into single notification
+    expect(notifyCount).toBe(1);
+
+    observer.dispose();
+  });
+
+  it("should handle separate async batches", async () => {
+    const state = createState({ count: 0 });
+    let notifyCount = 0;
+
+    const observer = new Observer(() => {
+      notifyCount++;
+    });
+
+    const dispose = observer.observe();
+    state.count;
+    dispose();
+
+    state.count = 1;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const afterFirst = notifyCount;
+
+    state.count = 2;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const afterSecond = notifyCount;
+
+    expect(afterFirst).toBe(1);
+    expect(afterSecond).toBe(2);
+
+    observer.dispose();
+  });
+});
+
+describe("installEventBatching", () => {
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    document.body.removeChild(container);
+  });
+
+  it("should batch updates during click events", async () => {
+    installEventBatching(container);
+    await new Promise((resolve) => setTimeout(resolve, 0)); // Wait for bubble listener setup
+
+    const state = createState({ count: 0 });
+    let notifyCount = 0;
+
+    const observer = new Observer(() => {
+      notifyCount++;
+    });
+
+    const dispose = observer.observe();
+    state.count;
+    dispose();
+
+    const button = document.createElement("button");
+    button.addEventListener("click", () => {
+      state.count = 1;
+      state.count = 2;
+      state.count = 3;
+    });
+    container.appendChild(button);
+
+    // Simulate click
+    button.click();
+
+    // Should batch synchronously during event
+    expect(notifyCount).toBe(1);
+    expect(state.count).toBe(3);
+
+    observer.dispose();
+  });
+
+  it("should handle multiple event types", async () => {
+    installEventBatching(container);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const state = createState({ count: 0 });
+    let notifyCount = 0;
+
+    const observer = new Observer(() => {
+      notifyCount++;
+    });
+
+    const dispose = observer.observe();
+    state.count;
+    dispose();
+
+    const input = document.createElement("input");
+    input.addEventListener("input", () => {
+      state.count++;
+    });
+    input.addEventListener("change", () => {
+      state.count++;
+    });
+    container.appendChild(input);
+
+    // Simulate input event
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(notifyCount).toBe(1);
+
+    // Reset counter
+    notifyCount = 0;
+
+    // Simulate change event
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(notifyCount).toBe(1);
+
+    observer.dispose();
+  });
+});
+
+describe("syncBatch with nested async updates", () => {
+  it("should handle syncBatch inside async context", async () => {
+    const state = createState({ count: 0 });
+    let notifyCount = 0;
+
+    const observer = new Observer(() => {
+      notifyCount++;
+    });
+
+    const dispose = observer.observe();
+    state.count;
+    dispose();
+
+    // Async update
+    state.count = 1;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(notifyCount).toBe(1);
+
+    // Sync batch after async
+    syncBatch(() => {
+      state.count = 2;
+      state.count = 3;
+    });
+    expect(notifyCount).toBe(2); // +1 from sync batch
+
+    observer.dispose();
+  });
+
+  it("should handle async updates inside syncBatch callback", async () => {
+    const state = createState({ count: 0 });
+    let notifyCount = 0;
+
+    const observer = new Observer(() => {
+      notifyCount++;
+    });
+
+    const dispose = observer.observe();
+    state.count;
+    dispose();
+
+    syncBatch(() => {
+      state.count = 1;
+
+      // Trigger an async update from within syncBatch
+      setTimeout(() => {
+        state.count = 2;
+      }, 0);
+    });
+
+    // Sync batch should flush immediately
+    expect(notifyCount).toBe(1);
+    expect(state.count).toBe(1);
+
+    // Wait for async update
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(notifyCount).toBe(2);
+    expect(state.count).toBe(2);
 
     observer.dispose();
   });

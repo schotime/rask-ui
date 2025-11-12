@@ -6,34 +6,40 @@ export function createComputed<T extends Record<string, () => any>>(
 ): {
   [K in keyof T]: ReturnType<T[K]>;
 } {
-  const currentComponent = getCurrentComponent();
+  let currentComponent;
+  try {
+    currentComponent = getCurrentComponent();
+  } catch {
+    currentComponent = undefined;
+  }
   const proxy = {};
 
   for (const prop in computed) {
     let isDirty = true;
     let value: any;
     const signal = new Signal();
-    const observer = new Observer(() => {
+    const computedObserver = new Observer(() => {
       isDirty = true;
       signal.notify();
     });
 
     if (currentComponent) {
-      onCleanup(() => observer.dispose());
+      onCleanup(() => computedObserver.dispose());
     }
 
     Object.defineProperty(proxy, prop, {
       get() {
-        const observer = getCurrentObserver();
+        const currentObserver = getCurrentObserver();
 
-        if (observer) {
-          observer.subscribeSignal(signal);
+        if (currentObserver) {
+          currentObserver.subscribeSignal(signal);
         }
 
         if (isDirty) {
-          const stopObserving = observer.observe();
+          const stopObserving = computedObserver.observe();
           value = computed[prop]();
           stopObserving();
+          isDirty = false;
           return value;
         }
 

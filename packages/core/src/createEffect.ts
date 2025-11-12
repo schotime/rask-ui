@@ -2,7 +2,12 @@ import { getCurrentComponent, onCleanup } from "./component";
 import { Observer } from "./observation";
 
 export function createEffect(cb: () => void) {
-  const currentComponent = getCurrentComponent();
+  let currentComponent;
+  try {
+    currentComponent = getCurrentComponent();
+  } catch {
+    currentComponent = undefined;
+  }
   const observer = new Observer(() => {
     // We trigger effects on micro task as synchronous observer notifications
     // (Like when components sets props) should not synchronously trigger effects
