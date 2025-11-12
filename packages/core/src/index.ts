@@ -1,5 +1,3 @@
-import { options } from "inferno";
-
 export { render } from "inferno";
 export { onCleanup, onMount } from "./component";
 export { createContext } from "./createContext";
@@ -10,3 +8,4 @@ export { createQuery } from "./createQuery";
 export { createMutation } from "./createMutation";
 export { createRef } from "inferno";
 export { createView } from "./createView";
+export { batch } from "./observation";

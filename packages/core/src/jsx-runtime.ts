@@ -3,7 +3,7 @@ import { Component, createComponentVNode } from "inferno";
 import { VNodeFlags } from "inferno-vnode-flags";
 import type { JSXInternal } from "./jsx";
 import { createElement } from "inferno-create-element";
-import { createComponent, RaskFunctionComponent } from "./component";
+import { createComponent } from "./component";
 import { ErrorBoundary } from "./error";
 export { Fragment } from "inferno";
 

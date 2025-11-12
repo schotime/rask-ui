@@ -4,8 +4,17 @@ export function getCurrentObserver() {
   return observerStack[0];
 }
 
-let isQueuingNotify = false;
-let notifyQueue: Array<() => void> = [];
+let isBatching = false;
+const batchedNotifiers = new Set<() => void>();
+
+export function batch(cb: () => void) {
+  isBatching = true;
+  cb();
+  isBatching = false;
+  const notifiers = Array.from(batchedNotifiers);
+  batchedNotifiers.clear();
+  notifiers.forEach((notify) => notify());
+}
 
 export class Signal {
   private subscribers = new Set<() => void>();
@@ -31,7 +40,14 @@ export class Observer {
   }
   private onNotify: () => void;
   constructor(onNotify: () => void) {
-    this.onNotify = onNotify;
+    this.onNotify = () => {
+      console.log("NOTIFY!!!");
+      if (isBatching) {
+        batchedNotifiers.add(onNotify);
+      } else {
+        onNotify();
+      }
+    };
   }
   subscribeSignal(signal: Signal) {
     this.signalDisposers.add(signal.subscribe(this.onNotify));

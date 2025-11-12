@@ -1,4 +1,5 @@
 import { createState } from "./createState";
+import { batch } from "./observation";
 
 type QueryState<T> =
   | {
@@ -67,21 +68,24 @@ export function createQuery<T>(fetcher: () => Promise<T>): Query<T> {
           return;
         }
 
-        assign({
-          isPending: false,
-          data,
-          error: null,
+        batch(() => {
+          assign({
+            isPending: false,
+            data,
+            error: null,
+          });
         });
       })
       .catch((error) => {
         if (abortController.signal.aborted) {
           return;
         }
-
-        assign({
-          isPending: false,
-          data: null,
-          error: String(error),
+        batch(() => {
+          assign({
+            isPending: false,
+            data: null,
+            error: String(error),
+          });
         });
       });
   };
@@ -99,11 +103,14 @@ export function createQuery<T>(fetcher: () => Promise<T>): Query<T> {
       return state.error;
     },
     fetch(force) {
-      assign({
-        isPending: true,
-        data: force ? null : state.data,
-        error: null,
+      batch(() => {
+        assign({
+          isPending: true,
+          data: force ? null : state.data,
+          error: null,
+        });
       });
+
       fetch();
     },
   } as Query<T>;

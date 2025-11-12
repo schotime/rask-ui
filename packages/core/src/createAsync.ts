@@ -1,4 +1,5 @@
 import { createState } from "./createState";
+import { batch } from "./observation";
 
 type AsyncState<T> =
   | {
@@ -49,17 +50,21 @@ export function createAsync<T>(promise: Promise<T>) {
 
   promise
     .then((value) => {
-      Object.assign(state, {
-        value,
-        error: null,
-        isPending: false,
+      batch(() => {
+        Object.assign(state, {
+          value,
+          error: null,
+          isPending: false,
+        });
       });
     })
     .catch((error) => {
-      Object.assign(state, {
-        value: null,
-        error: String(error),
-        isPending: false,
+      batch(() => {
+        Object.assign(state, {
+          value: null,
+          error: String(error),
+          isPending: false,
+        });
       });
     });
 
