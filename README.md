@@ -62,9 +62,7 @@ RASK gives you:
 
 - **Simple state management** - No reconciler interference with your state management
 - **Full reconciler power** - Express complex UIs naturally with the language
-- **No special syntax** - Access state properties directly, no function calls
-- **No compiler magic** - Plain JavaScript/TypeScript
-- **Simple mental model** - Just implement state and UI. No manual optimizations, special syntax or compiler magic
+- **No compiler magic** - Plain JavaScript/TypeScript, it runs as you write it
 
 :fire: Built on [Inferno JS](https://github.com/infernojs/inferno).
 
@@ -74,6 +72,19 @@ RASK gives you:
 
 ```bash
 npm install rask-ui
+```
+
+### Configuration
+
+Configure TypeScript to use RASK's JSX runtime:
+
+```json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "rask-ui"
+  }
+}
 ```
 
 ### Basic Example
@@ -449,8 +460,7 @@ function ShoppingCart() {
       state.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
     tax: () => computed.subtotal * state.taxRate,
     total: () => computed.subtotal + computed.tax,
-    itemCount: () =>
-      state.items.reduce((sum, item) => sum + item.quantity, 0),
+    itemCount: () => state.items.reduce((sum, item) => sum + item.quantity, 0),
   });
 
   return () => (
@@ -467,7 +477,9 @@ function ShoppingCart() {
       </ul>
       <div>
         <p>Subtotal: ${computed.subtotal.toFixed(2)}</p>
-        <p>Tax ({state.taxRate * 100}%): ${computed.tax.toFixed(2)}</p>
+        <p>
+          Tax ({state.taxRate * 100}%): ${computed.tax.toFixed(2)}
+        </p>
         <p>
           <strong>Total: ${computed.total.toFixed(2)}</strong>
         </p>
@@ -966,6 +978,7 @@ function ShoppingCart() {
 ```
 
 Benefits of `createComputed`:
+
 - **Cached** - Only recalculates when dependencies change
 - **Lazy** - Only calculates when accessed
 - **Composable** - Computed properties can depend on other computed properties
@@ -1114,21 +1127,6 @@ function TodoList() {
       ))}
     </ul>
   );
-}
-```
-
-## Configuration
-
-### JSX Setup
-
-Configure TypeScript to use RASK's JSX runtime:
-
-```json
-{
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "jsxImportSource": "rask-ui"
-  }
 }
 ```
 
