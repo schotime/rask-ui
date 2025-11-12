@@ -77,7 +77,6 @@ export function createQuery<T>(fetcher: () => Promise<T>): Query<T> {
         if (abortController.signal.aborted) {
           return;
         }
-
         assign({
           isPending: false,
           data: null,
@@ -104,6 +103,7 @@ export function createQuery<T>(fetcher: () => Promise<T>): Query<T> {
         data: force ? null : state.data,
         error: null,
       });
+
       fetch();
     },
   } as Query<T>;

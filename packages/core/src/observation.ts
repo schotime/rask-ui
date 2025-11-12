@@ -1,11 +1,10 @@
+import { queue } from "./batch";
+
 const observerStack: Observer[] = [];
 
 export function getCurrentObserver() {
   return observerStack[0];
 }
-
-let isQueuingNotify = false;
-let notifyQueue: Array<() => void> = [];
 
 export class Signal {
   private subscribers = new Set<() => void>();
@@ -31,7 +30,9 @@ export class Observer {
   }
   private onNotify: () => void;
   constructor(onNotify: () => void) {
-    this.onNotify = onNotify;
+    this.onNotify = () => {
+      queue(onNotify);
+    };
   }
   subscribeSignal(signal: Signal) {
     this.signalDisposers.add(signal.subscribe(this.onNotify));

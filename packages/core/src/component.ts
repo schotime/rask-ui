@@ -7,6 +7,7 @@ import {
 } from "inferno";
 import { VNodeFlags } from "inferno-vnode-flags";
 import { getCurrentObserver, Observer, Signal } from "./observation";
+import { syncBatch } from "./batch";
 
 let currentComponent: RaskComponent<any> | undefined;
 
@@ -47,6 +48,7 @@ class RaskComponent<P extends Props<any>> extends Component<
     this.forceUpdate();
   });
   private isRendering = false;
+  effects: Array<{ isDirty: boolean; run: () => void }> = [];
   contexts = new Map();
   getChildContext() {
     const parentGetContext = this.context.getContext;
@@ -98,16 +100,22 @@ class RaskComponent<P extends Props<any>> extends Component<
   componentWillUnmount(): void {
     this.onCleanups.forEach((cb) => cb());
   }
-  componentDidUpdate() {
-    for (const prop in this.props) {
-      if (prop === "__component" || prop === "children") {
-        continue;
-      }
+  /**
+   *
+   */
+  componentWillUpdate(nextProps: any) {
+    syncBatch(() => {
+      for (const prop in nextProps) {
+        if (prop === "__component" || prop === "children") {
+          continue;
+        }
 
-      // @ts-ignore
-      this.reactiveProps[prop] = this.props[prop];
-    }
+        // @ts-ignore
+        this.reactiveProps[prop] = nextProps[prop];
+      }
+    });
   }
+  componentWillReceiveProps(): void {}
   shouldComponentUpdate(nextProps: Props<any>): boolean {
     // Shallow comparison of props, excluding internal props
     for (const prop in nextProps) {
