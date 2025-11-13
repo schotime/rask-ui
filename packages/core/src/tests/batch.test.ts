@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { syncBatch, queue, installEventBatching } from "../batch";
+import { syncBatch } from "../batch";
 import { createState } from "../createState";
 import { Observer } from "../observation";
 
@@ -245,90 +245,6 @@ describe("queue (async batching)", () => {
 
     expect(afterFirst).toBe(1);
     expect(afterSecond).toBe(2);
-
-    observer.dispose();
-  });
-});
-
-describe("installEventBatching", () => {
-  let container: HTMLDivElement;
-
-  beforeEach(() => {
-    container = document.createElement("div");
-    document.body.appendChild(container);
-  });
-
-  afterEach(() => {
-    document.body.removeChild(container);
-  });
-
-  it("should batch updates during click events", async () => {
-    installEventBatching(container);
-    await new Promise((resolve) => setTimeout(resolve, 0)); // Wait for bubble listener setup
-
-    const state = createState({ count: 0 });
-    let notifyCount = 0;
-
-    const observer = new Observer(() => {
-      notifyCount++;
-    });
-
-    const dispose = observer.observe();
-    state.count;
-    dispose();
-
-    const button = document.createElement("button");
-    button.addEventListener("click", () => {
-      state.count = 1;
-      state.count = 2;
-      state.count = 3;
-    });
-    container.appendChild(button);
-
-    // Simulate click
-    button.click();
-
-    // Should batch synchronously during event
-    expect(notifyCount).toBe(1);
-    expect(state.count).toBe(3);
-
-    observer.dispose();
-  });
-
-  it("should handle multiple event types", async () => {
-    installEventBatching(container);
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    const state = createState({ count: 0 });
-    let notifyCount = 0;
-
-    const observer = new Observer(() => {
-      notifyCount++;
-    });
-
-    const dispose = observer.observe();
-    state.count;
-    dispose();
-
-    const input = document.createElement("input");
-    input.addEventListener("input", () => {
-      state.count++;
-    });
-    input.addEventListener("change", () => {
-      state.count++;
-    });
-    container.appendChild(input);
-
-    // Simulate input event
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    expect(notifyCount).toBe(1);
-
-    // Reset counter
-    notifyCount = 0;
-
-    // Simulate change event
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-    expect(notifyCount).toBe(1);
 
     observer.dispose();
   });

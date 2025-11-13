@@ -1,28 +1,3 @@
-const INTERACTIVE_EVENTS = [
-  // DISCRETE
-  "beforeinput",
-  "input",
-  "change",
-  "compositionend",
-  "keydown",
-  "keyup",
-  "click",
-  "contextmenu",
-  "submit",
-  "reset",
-
-  // GESTURE START
-  "pointerdown",
-  "mousedown",
-  "touchstart",
-
-  // GESTURE END
-  "pointerup",
-  "mouseup",
-  "touchend",
-  "touchcancel",
-];
-
 export type QueuedCallback = (() => void) & { __queued: boolean };
 
 const asyncQueue: Array<QueuedCallback> = [];
@@ -32,6 +7,10 @@ let inInteractive = 0;
 let asyncScheduled = false;
 let inSyncBatch = 0;
 
+// New: guards against re-entrant flushing
+let inAsyncFlush = false;
+let inSyncFlush = false;
+
 function scheduleAsyncFlush() {
   if (asyncScheduled) return;
   asyncScheduled = true;
@@ -39,31 +18,54 @@ function scheduleAsyncFlush() {
 }
 
 function flushAsyncQueue() {
+  if (inAsyncFlush) return;
+  inAsyncFlush = true;
   asyncScheduled = false;
-  if (!asyncQueue.length) return;
 
-  for (let i = 0; i < asyncQueue.length; i++) {
-    const cb = asyncQueue[i];
-    asyncQueue[i] = undefined as any;
-    cb();
-    cb.__queued = false;
+  try {
+    if (!asyncQueue.length) return;
+
+    // Note: we intentionally DO NOT snapshot.
+    // If callbacks queue more async work, it gets picked up
+    // in this same loop because length grows.
+    for (let i = 0; i < asyncQueue.length; i++) {
+      const cb = asyncQueue[i];
+      asyncQueue[i] = undefined as any;
+      cb();
+      cb.__queued = false;
+    }
+    asyncQueue.length = 0;
+  } finally {
+    inAsyncFlush = false;
   }
-  asyncQueue.length = 0;
 }
 
 function flushSyncQueue() {
-  if (!syncQueue.length) return;
+  if (inSyncFlush) return;
+  inSyncFlush = true;
 
-  for (let i = 0; i < syncQueue.length; i++) {
-    const cb = syncQueue[i];
-    syncQueue[i] = undefined as any;
-    cb();
-    cb.__queued = false;
+  try {
+    if (!syncQueue.length) return;
+
+    // Same pattern as async: no snapshot, just iterate.
+    // New callbacks queued via syncBatch inside this flush
+    // will be pushed to syncQueue and picked up by this loop.
+    for (let i = 0; i < syncQueue.length; i++) {
+      const cb = syncQueue[i];
+      syncQueue[i] = undefined as any;
+      cb();
+      cb.__queued = false;
+    }
+    syncQueue.length = 0;
+  } finally {
+    inSyncFlush = false;
   }
-  syncQueue.length = 0;
 }
 
 export function queue(cb: QueuedCallback) {
+  // Optional: uncomment this if you want deduping:
+  // if (cb.__queued) return;
+
   cb.__queued = true;
 
   if (inSyncBatch) {
@@ -81,43 +83,16 @@ export function syncBatch(cb: () => void) {
   inSyncBatch++;
   try {
     cb();
-    // Only flush on successful completion
-    inSyncBatch--;
-    if (!inSyncBatch) {
-      flushSyncQueue();
-    }
   } catch (e) {
     inSyncBatch--;
-    throw e; // Re-throw without flushing
+    throw e; // no flush on error
   }
-}
 
-export function installEventBatching(target: EventTarget = document) {
-  const captureOptions: AddEventListenerOptions = {
-    capture: true,
-    passive: true,
-  };
-  const bubbleOptions: AddEventListenerOptions = { passive: true };
-
-  const onCapture = () => {
-    inInteractive++;
-    scheduleAsyncFlush(); // backup in case of stopPropagation
-  };
-
-  const onBubble = () => {
-    if (--inInteractive === 0 && asyncQueue.length) {
-      // Flush inline once outermost interactive event finishes
-      flushAsyncQueue();
-    }
-  };
-
-  INTERACTIVE_EVENTS.forEach((type) => {
-    target.addEventListener(type, onCapture, captureOptions);
-  });
-
-  queueMicrotask(() => {
-    INTERACTIVE_EVENTS.forEach((type) => {
-      target.addEventListener(type, onBubble, bubbleOptions);
-    });
-  });
+  inSyncBatch--;
+  if (!inSyncBatch) {
+    // Only the outermost syncBatch triggers a flush.
+    // If this happens *inside* an ongoing flushSyncQueue,
+    // inSyncFlush will be true and flushSyncQueue will no-op.
+    flushSyncQueue();
+  }
 }
