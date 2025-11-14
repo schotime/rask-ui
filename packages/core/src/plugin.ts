@@ -16,7 +16,7 @@ export interface RaskPluginOptions {
 
   /**
    * Import source for Inferno imports
-   * @default false (no imports added)
+   * @default true (imports from rask-ui)
    */
   imports?: boolean;
 
@@ -39,7 +39,7 @@ export interface RaskPluginOptions {
 export function raskPlugin(options: RaskPluginOptions = {}): Plugin {
   const {
     transformComponents = true,
-    imports = false,
+    imports = true,
     importSource = 'rask-ui',
     defineAllArguments = false,
   } = options;

@@ -1,4 +1,4 @@
-import { getCurrentComponent, onCleanup } from "./component";
+import { getCurrentComponent, createCleanup } from "./component";
 import { getCurrentObserver, Observer, Signal } from "./observation";
 
 export function createComputed<T extends Record<string, () => any>>(
@@ -24,7 +24,7 @@ export function createComputed<T extends Record<string, () => any>>(
     });
 
     if (currentComponent) {
-      onCleanup(() => computedObserver.dispose());
+      createCleanup(() => computedObserver.dispose());
     }
 
     Object.defineProperty(proxy, prop, {

@@ -68,79 +68,24 @@ RASK gives you:
 
 ## Getting Started
 
-### Installation
+The fastest way to get started is using `create-rask-ui`:
 
 ```bash
-npm install rask-ui
+npm create rask-ui my-app
+cd my-app
+npm run dev
 ```
 
-### Vite Setup
+This will scaffold a new Vite project with RASK UI pre-configured and ready to go. You'll be prompted to choose between TypeScript or JavaScript.
 
-RASK uses a custom Vite plugin powered by SWC for optimal JSX transformation. This plugin transforms JSX to Inferno's highly optimized `createVNode` calls and automatically converts function components to RASK's reactive component pattern.
+### What's Included
 
-#### 1. Configure Vite
+The scaffolded project includes:
 
-Create or update your `vite.config.ts`:
-
-```ts
-import { defineConfig } from 'vite';
-import { raskPlugin } from 'rask-ui/plugin';
-
-export default defineConfig({
-  plugins: [raskPlugin()],
-});
-```
-
-**Plugin Options:**
-
-```ts
-raskPlugin({
-  // Enable/disable function component transformation
-  // Default: true
-  transformComponents: true,
-
-  // Add imports for Inferno utilities (usually not needed)
-  // Default: false
-  imports: false,
-
-  // Package to import from when transformComponents is enabled
-  // Default: "rask-ui"
-  importSource: "rask-ui",
-
-  // Define all arguments for createVNode (for debugging)
-  // Default: false
-  defineAllArguments: false,
-})
-```
-
-#### 2. Configure TypeScript
-
-Update your `tsconfig.json`:
-
-```json
-{
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "jsxImportSource": "rask-ui",
-    "moduleResolution": "bundler",
-    "target": "ES2022",
-    "module": "ESNext",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
-  }
-}
-```
-
-**Key settings:**
-
-- `"jsx": "react-jsx"` - Tells TypeScript to use the new JSX transform for type checking
-- `"jsxImportSource": "rask-ui"` - Points to RASK's JSX runtime for type definitions
-- `"moduleResolution": "bundler"` - Required for Vite
-
-**How it works:**
-
-- **TypeScript**: Type-checks JSX using RASK's type definitions (imported from Inferno)
-- **SWC Plugin**: Transforms JSX to Inferno's `createVNode` calls at build time
-- The result: You get full type safety with zero runtime overhead
+- ✅ Vite configured with the RASK plugin
+- ✅ TypeScript or JavaScript with proper JSX configuration
+- ✅ Hot Module Replacement (HMR) working out of the box
+- ✅ Sample counter component to get you started
 
 ### Basic Example
 
@@ -173,7 +118,7 @@ function MyComponent(props) {
   // SETUP PHASE - Runs once when component is created
   const state = createState({ value: props.initial });
 
-  onMount(() => {
+  createMountEffect(() => {
     console.log("Component mounted!");
   });
 
@@ -614,15 +559,15 @@ function BatchingExample() {
 
 ### Lifecycle Hooks
 
-#### `onMount(callback)`
+#### `createMountEffect(callback)`
 
 Registers a callback to run after the component is mounted to the DOM.
 
 ```tsx
-import { onMount } from "rask-ui";
+import { createMountEffect } from "rask-ui";
 
 function Example() {
-  onMount(() => {
+  createMountEffect(() => {
     console.log("Component mounted!");
   });
 
@@ -641,12 +586,12 @@ function Example() {
 
 ---
 
-#### `onCleanup(callback)`
+#### `createCleanup(callback)`
 
 Registers a callback to run when the component is unmounted.
 
 ```tsx
-import { onCleanup } from "rask-ui";
+import { createCleanup } from "rask-ui";
 
 function Example() {
   const state = createState({ time: Date.now() });
@@ -655,7 +600,7 @@ function Example() {
     state.time = Date.now();
   }, 1000);
 
-  onCleanup(() => {
+  createCleanup(() => {
     clearInterval(interval);
   });
 
@@ -1223,4 +1168,4 @@ MIT
 
 ## Why "RASK"?
 
-The name comes from Norwegian/Swedish meaning "fast" - which captures the essence of this library: fast to write, fast to understand, and fast to run.
+The name comes from Norwegian meaning "fast" - which captures the essence of this library: fast to write, fast to understand, and fast to run.

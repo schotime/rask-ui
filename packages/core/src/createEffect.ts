@@ -1,4 +1,4 @@
-import { getCurrentComponent, onCleanup } from "./component";
+import { getCurrentComponent, createCleanup } from "./component";
 import { Observer } from "./observation";
 
 export function createEffect(cb: () => void) {
@@ -21,7 +21,7 @@ export function createEffect(cb: () => void) {
   };
 
   if (currentComponent) {
-    onCleanup(() => observer.dispose());
+    createCleanup(() => observer.dispose());
   }
 
   runEffect();

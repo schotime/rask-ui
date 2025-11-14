@@ -20,17 +20,17 @@ export function getCurrentComponent() {
   return currentComponent;
 }
 
-export function onMount(cb: () => void) {
+export function createMountEffect(cb: () => void) {
   if (!currentComponent) {
-    throw new Error("Only use onCleanup in component setup");
+    throw new Error("Only use createMountEffect in component setup");
   }
 
   currentComponent.onMounts.push(cb);
 }
 
-export function onCleanup(cb: () => void) {
+export function createCleanup(cb: () => void) {
   if (!currentComponent) {
-    throw new Error("Only use onCleanup in component setup");
+    throw new Error("Only use createCleanup in component setup");
   }
 
   currentComponent.onCleanups.push(cb);
