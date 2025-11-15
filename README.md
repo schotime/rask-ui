@@ -218,7 +218,7 @@ When `state.count` changes in Parent, only Child re-renders because it accesses 
 
 ### One Rule To Accept
 
-**RASK has observable primitives**: Never destructure reactive objects (state, props, context values, async, query, mutation). Destructuring extracts plain values and breaks reactivity.
+**RASK has observable primitives**: Never destructure reactive objects (state, props, context values, tasks). Destructuring extracts plain values and breaks reactivity.
 
 ```tsx
 // ❌ BAD - Destructuring breaks reactivity
@@ -264,9 +264,7 @@ Reactive objects are implemented using JavaScript Proxies. When you access a pro
 - `createState()` - Never destructure state objects
 - Props - Never destructure component props
 - `createContext().get()` - Never destructure context values
-- `createAsync()` - Never destructure async state
-- `createQuery()` - Never destructure query objects
-- `createMutation()` - Never destructure mutation objects
+- `createTask()` - Never destructure task objects
 - `createView()` - Never destructure view objects
 - `createComputed()` - Never destructure computed objects
 
@@ -684,58 +682,38 @@ function Child() {
 
 ### Async Data Management
 
-#### `createAsync<T>(promise)`
+#### `createTask<T, P>(task)`
 
-Creates reactive state for async operations with loading and error states.
+Creates a low-level reactive primitive for managing async operations with loading, error, and result states. This is a generic primitive that gives you full control over async state management without prescribing patterns.
 
 ```tsx
-import { createAsync } from "rask-ui";
+import { createTask } from "rask-ui";
 
+// Simple task without parameters - auto-runs on creation
 function UserProfile() {
-  const user = createAsync(fetch("/api/user").then((r) => r.json()));
+  const user = createTask(() => fetch("/api/user").then((r) => r.json()));
 
-  return () => }
-    if (user.isPending) {
-      return <p>Loading...</p>
+  return () => {
+    if (user.isRunning) {
+      return <p>Loading...</p>;
     }
 
     if (user.error) {
-      return <p>Error: {user.error}</p>
+      return <p>Error: {user.error}</p>;
     }
 
-    return <p>Hello, {user.value.name}!</p>
+    return <p>Hello, {user.result.name}!</p>;
+  };
 }
-```
 
-**Parameters:**
-
-- `promise: Promise<T>` - The promise to track
-
-**Returns:** Reactive object with:
-
-- `isPending: boolean` - True while promise is pending
-- `value: T | null` - Resolved value (null while pending or on error)
-- `error: string | null` - Error message (null while pending or on success)
-
-**States:**
-
-- `{ isPending: true, value: null, error: null }` - Loading
-- `{ isPending: false, value: T, error: null }` - Success
-- `{ isPending: false, value: null, error: string }` - Error
-
----
-
-#### `createQuery<T>(fetcher)`
-
-Creates a query with refetch capability and request cancellation.
-
-```tsx
-import { createQuery } from "rask-ui";
-
+// Task with parameters - control when to run
 function Posts() {
-  const posts = createQuery(() => fetch("/api/posts").then((r) => r.json()));
+  const posts = createTask((page: number) =>
+    fetch(`/api/posts?page=${page}`).then((r) => r.json())
+  );
+
   const renderPosts = () => {
-    if (posts.isPending) {
+    if (posts.isRunning) {
       return <p>Loading...</p>;
     }
 
@@ -743,61 +721,37 @@ function Posts() {
       return <p>Error: {posts.error}</p>;
     }
 
-    return posts.data.map((post) => (
+    if (!posts.result) {
+      return <p>No posts loaded</p>;
+    }
+
+    return posts.result.map((post) => (
       <article key={post.id}>{post.title}</article>
     ));
   };
 
   return () => (
     <div>
-      <button onClick={() => posts.fetch()}>Refresh</button>
-      <button onClick={() => posts.fetch(true)}>Force Refresh</button>
+      <button onClick={() => posts.run(1)}>Load Page 1</button>
+      <button onClick={() => posts.rerun(1)}>Reload Page 1</button>
       {renderPosts()}
     </div>
   );
 }
-```
 
-**Parameters:**
-
-- `fetcher: () => Promise<T>` - Function that returns a promise
-
-**Returns:** Query object with:
-
-- `isPending: boolean` - True while fetching
-- `data: T | null` - Fetched data
-- `error: string | null` - Error message
-- `fetch(force?: boolean)` - Refetch data
-  - `force: false` (default) - Keep existing data while refetching
-  - `force: true` - Clear data before refetching
-
-**Features:**
-
-- Automatic request cancellation on refetch
-- Keeps old data by default during refetch
-- Automatically fetches on creation
-
----
-
-#### `createMutation<T>(mutator)`
-
-Creates a mutation for data updates with pending and error states.
-
-```tsx
-import { createMutation } from "rask-ui";
-
+// Mutation-style usage
 function CreatePost() {
   const state = createState({ title: "", body: "" });
 
-  const create = createMutation((data) =>
+  const create = createTask((data: { title: string; body: string }) =>
     fetch("/api/posts", {
       method: "POST",
       body: JSON.stringify(data),
-    }))
+    }).then((r) => r.json())
   );
 
   const handleSubmit = () => {
-    create.mutate({ title: state.title, body: state.body });
+    create.run({ title: state.title, body: state.body });
   };
 
   return () => (
@@ -810,8 +764,8 @@ function CreatePost() {
         value={state.body}
         onInput={(e) => (state.body = e.target.value)}
       />
-      <button disabled={create.isPending}>
-        {create.isPending ? "Creating..." : "Create"}
+      <button disabled={create.isRunning}>
+        {create.isRunning ? "Creating..." : "Create"}
       </button>
       {create.error && <p>Error: {create.error}</p>}
     </form>
@@ -819,22 +773,72 @@ function CreatePost() {
 }
 ```
 
-**Parameters:**
+**Type Signatures:**
 
-- `mutator: (params: T) => Promise<T>` - Function that performs the mutation
+```tsx
+// Task without parameters - auto-runs on creation
+createTask<T>(task: () => Promise<T>): Task<T, never> & {
+  run(): Promise<T>;
+  rerun(): Promise<T>;
+}
 
-**Returns:** Mutation object with:
+// Task with parameters - manual control
+createTask<T, P>(task: (params: P) => Promise<T>): Task<T, P> & {
+  run(params: P): Promise<T>;
+  rerun(params: P): Promise<T>;
+}
+```
 
-- `isPending: boolean` - True while mutation is in progress
-- `params: T | null` - Current mutation parameters
-- `error: string | null` - Error message
-- `mutate(params: T)` - Execute the mutation
+**Returns:** Task object with reactive state and methods:
+
+**State Properties:**
+- `isRunning: boolean` - True while task is executing
+- `result: T | null` - Result of successful execution (null if not yet run, running, or error)
+- `error: string | null` - Error message from failed execution (null if successful or running)
+- `params: P | null` - Current parameters while running (null when idle)
+
+**Methods:**
+- `run(params?: P): Promise<T>` - Execute the task, clearing previous result
+- `rerun(params?: P): Promise<T>` - Re-execute the task, keeping previous result until new one arrives
+
+**State Transitions:**
+
+Initial state (no params):
+```tsx
+{ isRunning: false, params: null, result: null, error: null }
+```
+
+While running:
+```tsx
+{ isRunning: true, result: T | null, params: P, error: null }
+```
+
+Success:
+```tsx
+{ isRunning: false, params: null, result: T, error: null }
+```
+
+Error:
+```tsx
+{ isRunning: false, params: null, result: null, error: string }
+```
 
 **Features:**
 
-- Automatic request cancellation if mutation called again
-- Tracks mutation parameters
-- Resets state after successful completion
+- **Automatic cancellation** - Previous executions are cancelled when a new one starts
+- **Flexible control** - Use `run()` to clear old data or `rerun()` to keep it during loading
+- **Type-safe** - Full TypeScript inference for parameters and results
+- **Auto-run support** - Tasks without parameters run automatically on creation
+- **Generic primitive** - Build your own patterns on top (queries, mutations, etc.)
+
+**Usage Patterns:**
+
+Use `createTask` as a building block for various async patterns:
+- **Queries**: Tasks that fetch data and can be refetched
+- **Mutations**: Tasks that modify server state
+- **Polling**: Tasks that run periodically
+- **Debounced searches**: Tasks that run based on user input
+- **File uploads**: Tasks that track upload progress
 
 ---
 

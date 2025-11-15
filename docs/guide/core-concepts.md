@@ -119,9 +119,7 @@ Reactive objects are implemented using JavaScript Proxies. When you access a pro
 - `createState()` - Never destructure state objects
 - Props - Never destructure component props
 - `createContext().get()` - Never destructure context values
-- `createAsync()` - Never destructure async state
-- `createQuery()` - Never destructure query objects
-- `createMutation()` - Never destructure mutation objects
+- `createTask()` - Never destructure task objects
 - `createView()` - Never destructure view objects
 - `createComputed()` - Never destructure computed objects
 
