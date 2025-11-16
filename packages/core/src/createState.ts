@@ -1,4 +1,4 @@
-import { INSPECT_MARKER, InspectorCallback } from "./inspect";
+import { INSPECT_MARKER, INSPECTOR_ENABLED, InspectorCallback, InspectorRef } from "./inspect";
 import { getCurrentObserver, Signal } from "./observation";
 
 /**
@@ -26,17 +26,13 @@ import { getCurrentObserver, Signal } from "./observation";
  * @returns A reactive proxy of the state object
  */
 export function createState<T extends object>(state: T): T {
-  return getProxy(state) as any;
+  return getProxy(state, {}) as any;
 }
 
 const proxyCache = new WeakMap<any, any>();
 export const PROXY_MARKER = Symbol("isProxy");
 
-function getProxy(
-  value: object,
-  notifyInspector?: InspectorCallback,
-  path?: string[]
-) {
+function getProxy(value: object, notifyInspectorRef: InspectorRef) {
   // Check if already a proxy to avoid double-wrapping
   if (PROXY_MARKER in value) {
     return value;
@@ -54,12 +50,19 @@ function getProxy(
       if (key === PROXY_MARKER) {
         return true;
       }
+      if (INSPECTOR_ENABLED && key === INSPECT_MARKER) {
+        return true;
+      }
       return Reflect.has(target, key);
     },
     get(target, key) {
       // Mark this as a proxy to prevent double-wrapping
-      if (key === PROXY_MARKER || key === INSPECT_MARKER) {
+      if (key === PROXY_MARKER) {
         return true;
+      }
+
+      if (INSPECTOR_ENABLED && key === INSPECT_MARKER) {
+        return !notifyInspectorRef.current;
       }
 
       const value = Reflect.get(target, key);
@@ -82,17 +85,27 @@ function getProxy(
       ) {
         return getProxy(
           value,
-          notifyInspector,
-          notifyInspector ? (path ? path.concat(key) : [key]) : undefined
+          INSPECTOR_ENABLED && notifyInspectorRef.current
+            ? {
+                current: {
+                  notify: notifyInspectorRef.current.notify,
+                  path: notifyInspectorRef.current.path.concat(key),
+                },
+              }
+            : notifyInspectorRef
         );
       }
 
       return value;
     },
     set(target, key, newValue) {
-      if (key === INSPECT_MARKER) {
-        notifyInspector = newValue.fn;
-        path = newValue.path;
+      if (INSPECTOR_ENABLED && key === INSPECT_MARKER) {
+        Object.defineProperty(notifyInspectorRef, "current", {
+          get() {
+            return newValue.current;
+          },
+        });
+
         return Reflect.set(target, key, newValue);
       }
 
@@ -109,11 +122,13 @@ function getProxy(
         signal?.notify();
       }
 
-      notifyInspector?.({
-        type: "mutation",
-        path: path ? path.concat(key) : [key],
-        value: newValue,
-      });
+      if (INSPECTOR_ENABLED) {
+        notifyInspectorRef.current?.notify({
+          type: "mutation",
+          path: notifyInspectorRef.current.path,
+          value: newValue,
+        });
+      }
 
       return setResult;
     },

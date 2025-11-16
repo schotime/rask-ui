@@ -1,4 +1,5 @@
 import { getCurrentComponent, createCleanup } from "./component";
+import { INSPECT_MARKER, INSPECTOR_ENABLED, InspectorCallback, InspectorRef } from "./inspect";
 import { getCurrentObserver, Observer, Signal } from "./observation";
 
 export function createComputed<T extends Record<string, () => any>>(
@@ -13,6 +14,7 @@ export function createComputed<T extends Record<string, () => any>>(
     currentComponent = undefined;
   }
   const proxy = {};
+  let notifyInspectorRef: InspectorRef = {};
 
   for (const prop in computed) {
     let isDirty = true;
@@ -21,6 +23,14 @@ export function createComputed<T extends Record<string, () => any>>(
     const computedObserver = new Observer(() => {
       isDirty = true;
       signal.notify();
+      if (INSPECTOR_ENABLED) {
+        notifyInspectorRef.current?.notify({
+          type: "computed",
+          path: notifyInspectorRef.current!.path.concat(prop),
+          isDirty: true,
+          value,
+        });
+      }
     });
 
     if (currentComponent) {
@@ -28,6 +38,8 @@ export function createComputed<T extends Record<string, () => any>>(
     }
 
     Object.defineProperty(proxy, prop, {
+      enumerable: true,
+      configurable: true,
       get() {
         const currentObserver = getCurrentObserver();
 
@@ -40,10 +52,36 @@ export function createComputed<T extends Record<string, () => any>>(
           value = computed[prop]();
           stopObserving();
           isDirty = false;
+
+          if (INSPECTOR_ENABLED) {
+            notifyInspectorRef.current?.notify({
+              type: "computed",
+              path: notifyInspectorRef.current!.path.concat(prop),
+              isDirty: false,
+              value,
+            });
+          }
           return value;
         }
 
         return value;
+      },
+    });
+  }
+
+  if (INSPECTOR_ENABLED) {
+    Object.defineProperty(proxy, INSPECT_MARKER, {
+      enumerable: false,
+      configurable: false,
+      get() {
+        return !notifyInspectorRef.current;
+      },
+      set: (value) => {
+        Object.defineProperty(notifyInspectorRef, "current", {
+          get() {
+            return value.current;
+          },
+        });
       },
     });
   }

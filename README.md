@@ -684,12 +684,12 @@ function Child() {
 
 #### `createTask<T, P>(task)`
 
-Creates a low-level reactive primitive for managing async operations with loading, error, and result states. This is a generic primitive that gives you full control over async state management without prescribing patterns.
+A low-level reactive primitive for managing any async operation. `createTask` provides the foundation for building data fetching, mutations, polling, debouncing, and any other async pattern you need. It gives you full control without prescribing specific patterns.
 
 ```tsx
-import { createTask } from "rask-ui";
+import { createTask, createState } from "rask-ui";
 
-// Simple task without parameters - auto-runs on creation
+// Fetching data - auto-runs on creation
 function UserProfile() {
   const user = createTask(() => fetch("/api/user").then((r) => r.json()));
 
@@ -706,69 +706,114 @@ function UserProfile() {
   };
 }
 
-// Task with parameters - control when to run
+// Fetching with parameters
 function Posts() {
+  const state = createState({ page: 1 });
+
   const posts = createTask((page: number) =>
-    fetch(`/api/posts?page=${page}`).then((r) => r.json())
+    fetch(`/api/posts?page=${page}&limit=10`).then((r) => r.json())
   );
 
-  const renderPosts = () => {
-    if (posts.isRunning) {
-      return <p>Loading...</p>;
-    }
-
-    if (posts.error) {
-      return <p>Error: {posts.error}</p>;
-    }
-
-    if (!posts.result) {
-      return <p>No posts loaded</p>;
-    }
-
-    return posts.result.map((post) => (
-      <article key={post.id}>{post.title}</article>
-    ));
-  };
+  // Fetch when page changes
+  createEffect(() => {
+    posts.run(state.page);
+  });
 
   return () => (
     <div>
-      <button onClick={() => posts.run(1)}>Load Page 1</button>
-      <button onClick={() => posts.rerun(1)}>Reload Page 1</button>
-      {renderPosts()}
+      <h1>Posts - Page {state.page}</h1>
+      {posts.isRunning && <p>Loading...</p>}
+      {posts.result?.map((post) => (
+        <article key={post.id}>{post.title}</article>
+      ))}
+      <button onClick={() => state.page--}>Previous</button>
+      <button onClick={() => state.page++}>Next</button>
     </div>
   );
 }
 
-// Mutation-style usage
+// Mutation - creating data on server
 function CreatePost() {
   const state = createState({ title: "", body: "" });
 
-  const create = createTask((data: { title: string; body: string }) =>
+  const createPost = createTask((data: { title: string; body: string }) =>
     fetch("/api/posts", {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }).then((r) => r.json())
   );
 
-  const handleSubmit = () => {
-    create.run({ title: state.title, body: state.body });
+  const handleSubmit = async () => {
+    await createPost.run({ title: state.title, body: state.body });
+    // Clear form on success
+    state.title = "";
+    state.body = "";
   };
 
   return () => (
     <form onSubmit={handleSubmit}>
       <input
+        placeholder="Title"
         value={state.title}
         onInput={(e) => (state.title = e.target.value)}
       />
       <textarea
+        placeholder="Body"
         value={state.body}
         onInput={(e) => (state.body = e.target.value)}
       />
-      <button disabled={create.isRunning}>
-        {create.isRunning ? "Creating..." : "Create"}
+      <button disabled={createPost.isRunning}>
+        {createPost.isRunning ? "Creating..." : "Create Post"}
       </button>
-      {create.error && <p>Error: {create.error}</p>}
+      {createPost.error && <p>Error: {createPost.error}</p>}
+      {createPost.result && <p>Post created! ID: {createPost.result.id}</p>}
     </form>
+  );
+}
+
+// Optimistic updates - instant UI updates with rollback on error
+function TodoList() {
+  const state = createState({
+    todos: [],
+    optimisticTodo: null,
+  });
+
+  const createTodo = createTask((text: string) =>
+    fetch("/api/todos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, done: false }),
+    }).then((r) => r.json())
+  );
+
+  const addTodo = async (text: string) => {
+    // Show optimistically
+    state.optimisticTodo = { id: Date.now(), text, done: false };
+
+    try {
+      const savedTodo = await createTodo.run(text);
+      state.todos.push(savedTodo);
+      state.optimisticTodo = null;
+    } catch {
+      // Rollback on error
+      state.optimisticTodo = null;
+    }
+  };
+
+  return () => (
+    <div>
+      <ul>
+        {[...state.todos, state.optimisticTodo]
+          .filter(Boolean)
+          .map((todo) => (
+            <li key={todo.id} style={{ opacity: todo === state.optimisticTodo ? 0.5 : 1 }}>
+              {todo.text}
+            </li>
+          ))}
+      </ul>
+      <button onClick={() => addTodo("New todo")}>Add Todo</button>
+    </div>
   );
 }
 ```
@@ -833,12 +878,208 @@ Error:
 
 **Usage Patterns:**
 
-Use `createTask` as a building block for various async patterns:
-- **Queries**: Tasks that fetch data and can be refetched
-- **Mutations**: Tasks that modify server state
-- **Polling**: Tasks that run periodically
-- **Debounced searches**: Tasks that run based on user input
-- **File uploads**: Tasks that track upload progress
+`createTask` is a low-level primitive. Use it as a building block for any async pattern:
+- **Data fetching**: Fetch data on mount or based on dependencies
+- **Mutations**: Create, update, or delete data on the server
+- **Optimistic updates**: Update UI instantly with rollback on error
+- **Polling**: Periodically refetch data
+- **Debounced searches**: Wait for user input to settle
+- **Dependent queries**: Chain requests that depend on each other
+- **Parallel requests**: Run multiple requests simultaneously
+- **Custom patterns**: Build your own abstractions (queries, mutations, etc.)
+
+---
+
+### Developer Tools
+
+#### `inspect(root, callback)`
+
+Enables inspection of reactive state, computed values, and actions for building devtools. This API is **development-only** and has zero overhead in production builds.
+
+```tsx
+import { inspect } from "rask-ui";
+
+function DevToolsIntegration() {
+  const state = createState({ count: 0, name: "Example" });
+  const computed = createComputed({
+    double: () => state.count * 2,
+  });
+
+  const actions = {
+    increment: () => state.count++,
+    reset: () => state.count = 0,
+  };
+
+  const view = createView(state, computed, actions);
+
+  // Inspect all reactive events
+  inspect(view, (event) => {
+    console.log(event);
+    // Send to devtools panel, logging service, etc.
+  });
+
+  return () => (
+    <div>
+      <h1>{view.name}: {view.count}</h1>
+      <p>Double: {view.double}</p>
+      <button onClick={view.increment}>+</button>
+      <button onClick={view.reset}>Reset</button>
+    </div>
+  );
+}
+```
+
+**Parameters:**
+
+- `root: any` - The reactive object to inspect (state, view, computed, etc.)
+- `callback: (event: InspectEvent) => void` - Callback receiving inspection events
+
+**Event Types:**
+
+```tsx
+type InspectEvent =
+  | {
+      type: "mutation";
+      path: string[];      // Property path, e.g., ["user", "name"]
+      value: any;          // New value
+    }
+  | {
+      type: "action";
+      path: string[];      // Function name path, e.g., ["increment"]
+      params: any[];       // Function parameters
+    }
+  | {
+      type: "computed";
+      path: string[];      // Computed property path
+      isDirty: boolean;    // true when invalidated, false when recomputed
+      value: any;          // Current or recomputed value
+    };
+```
+
+**Features:**
+
+- **Zero production overhead** - Completely eliminated in production builds via tree-shaking
+- **Deep tracking** - Tracks nested state mutations with full property paths
+- **Action tracking** - Captures function calls with parameters
+- **Computed lifecycle** - Observes when computed values become dirty and when they recompute
+- **Nested view support** - Compose deeply nested state trees and track full paths
+- **JSON serialization** - Use `JSON.stringify()` to extract state snapshots
+- **Flexible integration** - Build custom devtools, time-travel debugging, or logging systems
+
+**Use Cases:**
+
+- Building browser devtools extensions
+- Creating debugging panels for development
+- Implementing time-travel debugging
+- Logging state changes for debugging
+- Integrating with external monitoring tools
+- Building replay systems for bug reports
+
+**Production Builds:**
+
+The inspector is automatically stripped from production builds using Vite's `import.meta.env.DEV` constant. This means:
+
+- No runtime checks in production code
+- No function wrapping overhead
+- No symbol property lookups
+- Smaller bundle size
+- Zero performance impact
+
+```tsx
+// In development
+inspect(view, console.log); // ✅ Works, logs all events
+
+// In production build
+inspect(view, console.log); // No-op, zero overhead, removed by tree-shaking
+```
+
+**Nested State Trees:**
+
+The inspector automatically tracks nested property paths. Compose deeply nested views to create organized state trees:
+
+```tsx
+function App() {
+  // Create nested state structure
+  const userState = createState({
+    profile: { name: "Alice", email: "alice@example.com" },
+    preferences: { theme: "dark", notifications: true },
+  });
+
+  const cartState = createState({
+    items: [],
+    total: 0,
+  });
+
+  // Compose into a state tree
+  const appState = createView({
+    user: createView(userState),
+    cart: createView(cartState),
+  });
+
+  inspect(appState, (event) => {
+    console.log(event);
+  });
+
+  // When you do: appState.user.profile.name = "Bob"
+  // You receive: { type: "mutation", path: ["user", "profile", "name"], value: "Bob" }
+
+  return () => (
+    <div>
+      <h1>Welcome, {appState.user.profile.name}!</h1>
+      <p>Theme: {appState.user.preferences.theme}</p>
+      <p>Cart items: {appState.cart.items.length}</p>
+    </div>
+  );
+}
+```
+
+**JSON Serialization:**
+
+Use `JSON.stringify()` to extract state snapshots for devtools, persistence, or debugging:
+
+```tsx
+function App() {
+  const state = createState({
+    user: { id: 1, name: "Alice" },
+    todos: [
+      { id: 1, text: "Learn RASK", done: false },
+      { id: 2, text: "Build app", done: true },
+    ],
+  });
+
+  const computed = createComputed({
+    completedCount: () => state.todos.filter((t) => t.done).length,
+  });
+
+  const view = createView(state, computed);
+
+  // Serialize to JSON - includes computed values
+  const snapshot = JSON.stringify(view);
+  // {
+  //   "user": { "id": 1, "name": "Alice" },
+  //   "todos": [...],
+  //   "completedCount": 1
+  // }
+
+  // Send initial state and updates to devtools
+  if (import.meta.env.DEV) {
+    window.postMessage({
+      type: "RASK_DEVTOOLS_INIT",
+      initialState: JSON.parse(snapshot),
+    }, "*");
+
+    inspect(view, (event) => {
+      window.postMessage({
+        type: "RASK_DEVTOOLS_EVENT",
+        event,
+        snapshot: JSON.parse(JSON.stringify(view)),
+      }, "*");
+    });
+  }
+
+  return () => <div>{/* Your app */}</div>;
+}
+```
 
 ---
 

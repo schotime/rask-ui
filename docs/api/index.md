@@ -9,6 +9,7 @@ Complete reference for all RASK APIs.
 - [Lifecycle](/api/lifecycle) - `createMountEffect`, `createCleanup`
 - [Context](/api/context) - `createContext`
 - [Async Data](/api/async) - `createAsync`, `createQuery`, `createMutation`
+- [Developer Tools](/api/devtools) - `inspect`
 - [Error Handling](/api/error-handling) - `ErrorBoundary`
 
 ## Core Concepts
@@ -72,6 +73,9 @@ import {
   createAsync,
   createQuery,
   createMutation,
+
+  // Developer Tools
+  inspect,
 
   // Components
   ErrorBoundary,

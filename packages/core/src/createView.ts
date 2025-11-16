@@ -1,5 +1,5 @@
 import { PROXY_MARKER } from "./createState";
-import { INSPECT_MARKER, InspectorCallback } from "./inspect";
+import { INSPECT_MARKER, INSPECTOR_ENABLED, InspectorCallback, InspectorRef } from "./inspect";
 
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
@@ -62,10 +62,15 @@ export function createView<T extends readonly object[]>(
 ): MergeMany<T> {
   const result: any = {};
   const seen = new Set<PropertyKey>();
-  let notifyInspector: { fn: InspectorCallback; path: string[] } | undefined;
+  let notifyInspectorRef: InspectorRef = {};
 
   for (let i = args.length - 1; i >= 0; i--) {
-    const src = args[i];
+    const src = args[i] as any;
+
+    if (INSPECTOR_ENABLED && src[INSPECT_MARKER]) {
+      src[INSPECT_MARKER] = notifyInspectorRef;
+    }
+
     // mimic Object.assign: only enumerable own property keys
     for (const key of Reflect.ownKeys(src)) {
       if (seen.has(key)) continue;
@@ -79,20 +84,22 @@ export function createView<T extends readonly object[]>(
         get: () => {
           const value = (src as any)[key as any];
 
-          if (!notifyInspector) {
+          if (!INSPECTOR_ENABLED || !notifyInspectorRef.current) {
             return value;
           }
 
           if (value?.[INSPECT_MARKER]) {
             value[INSPECT_MARKER] = {
-              fn: notifyInspector.fn,
-              path: notifyInspector.path.concat(key as any),
+              current: {
+                notify: notifyInspectorRef.current.notify,
+                path: notifyInspectorRef.current.path.concat(key as any),
+              },
             };
           } else if (typeof value === "function") {
             return (...params: any[]) => {
-              notifyInspector!.fn({
+              notifyInspectorRef.current!.notify({
                 type: "action",
-                path: notifyInspector!.path.concat(key as any),
+                path: notifyInspectorRef.current!.path.concat(key as any),
                 params,
               });
               return value(...params);
@@ -107,16 +114,22 @@ export function createView<T extends readonly object[]>(
     }
   }
 
-  Object.defineProperty(result, INSPECT_MARKER, {
-    enumerable: false,
-    configurable: false,
-    get() {
-      return true;
-    },
-    set: (value) => {
-      notifyInspector = value;
-    },
-  });
+  if (INSPECTOR_ENABLED) {
+    Object.defineProperty(result, INSPECT_MARKER, {
+      enumerable: false,
+      configurable: false,
+      get() {
+        return !notifyInspectorRef.current;
+      },
+      set: (value) => {
+        Object.defineProperty(notifyInspectorRef, "current", {
+          get() {
+            return value.current;
+          },
+        });
+      },
+    });
+  }
 
   return result as MergeMany<T>;
 }
