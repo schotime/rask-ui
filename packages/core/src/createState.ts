@@ -1,3 +1,4 @@
+import { INSPECT_MARKER, InspectorCallback } from "./inspect";
 import { getCurrentObserver, Signal } from "./observation";
 
 /**
@@ -31,7 +32,11 @@ export function createState<T extends object>(state: T): T {
 const proxyCache = new WeakMap<any, any>();
 export const PROXY_MARKER = Symbol("isProxy");
 
-function getProxy(value: object) {
+function getProxy(
+  value: object,
+  notifyInspector?: InspectorCallback,
+  path?: string[]
+) {
   // Check if already a proxy to avoid double-wrapping
   if (PROXY_MARKER in value) {
     return value;
@@ -53,7 +58,7 @@ function getProxy(value: object) {
     },
     get(target, key) {
       // Mark this as a proxy to prevent double-wrapping
-      if (key === PROXY_MARKER) {
+      if (key === PROXY_MARKER || key === INSPECT_MARKER) {
         return true;
       }
 
@@ -75,12 +80,22 @@ function getProxy(value: object) {
         Array.isArray(value) ||
         (typeof value === "object" && value !== null)
       ) {
-        return getProxy(value);
+        return getProxy(
+          value,
+          notifyInspector,
+          notifyInspector ? (path ? path.concat(key) : [key]) : undefined
+        );
       }
 
       return value;
     },
     set(target, key, newValue) {
+      if (key === INSPECT_MARKER) {
+        notifyInspector = newValue.fn;
+        path = newValue.path;
+        return Reflect.set(target, key, newValue);
+      }
+
       if (typeof key === "symbol") {
         return Reflect.set(target, key, newValue);
       }
@@ -93,6 +108,12 @@ function getProxy(value: object) {
         const signal = signals[key];
         signal?.notify();
       }
+
+      notifyInspector?.({
+        type: "mutation",
+        path: path ? path.concat(key) : [key],
+        value: newValue,
+      });
 
       return setResult;
     },

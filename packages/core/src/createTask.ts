@@ -83,8 +83,6 @@ export function createTask<T, P>(task: (params?: P) => Promise<T>) {
     return promise;
   };
 
-  fetch();
-
   return {
     get isRunning() {
       return state.isRunning;

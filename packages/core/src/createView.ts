@@ -1,3 +1,6 @@
+import { PROXY_MARKER } from "./createState";
+import { INSPECT_MARKER, InspectorCallback } from "./inspect";
+
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
 type MergeTwo<A extends object, B extends object> = Simplify<
@@ -59,6 +62,7 @@ export function createView<T extends readonly object[]>(
 ): MergeMany<T> {
   const result: any = {};
   const seen = new Set<PropertyKey>();
+  let notifyInspector: { fn: InspectorCallback; path: string[] } | undefined;
 
   for (let i = args.length - 1; i >= 0; i--) {
     const src = args[i];
@@ -72,14 +76,47 @@ export function createView<T extends readonly object[]>(
       Object.defineProperty(result, key, {
         enumerable: true,
         configurable: true,
-        get: () => (src as any)[key as any],
-        // Optional write-through (commented out by default):
-        // set: (value) => { (src as any)[key as any] = value; },
+        get: () => {
+          const value = (src as any)[key as any];
+
+          if (!notifyInspector) {
+            return value;
+          }
+
+          if (value?.[INSPECT_MARKER]) {
+            value[INSPECT_MARKER] = {
+              fn: notifyInspector.fn,
+              path: notifyInspector.path.concat(key as any),
+            };
+          } else if (typeof value === "function") {
+            return (...params: any[]) => {
+              notifyInspector!.fn({
+                type: "action",
+                path: notifyInspector!.path.concat(key as any),
+                params,
+              });
+              return value(...params);
+            };
+          }
+
+          return value;
+        },
       });
 
       seen.add(key);
     }
   }
+
+  Object.defineProperty(result, INSPECT_MARKER, {
+    enumerable: false,
+    configurable: false,
+    get() {
+      return true;
+    },
+    set: (value) => {
+      notifyInspector = value;
+    },
+  });
 
   return result as MergeMany<T>;
 }

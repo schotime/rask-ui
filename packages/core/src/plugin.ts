@@ -57,9 +57,17 @@ export function raskPlugin(options: RaskPluginOptions = {}): Plugin {
     name: 'rask-plugin',
     enforce: 'pre',
 
-    config() {
+    config(config, { mode }) {
       return {
         esbuild: false, // Disable esbuild to use SWC
+        resolve: {
+          alias: {
+            // In development mode, use Inferno's development build to avoid the warning
+            ...(mode === 'development' && {
+              inferno: 'inferno/dist/index.dev.mjs',
+            }),
+          },
+        },
       };
     },
 
