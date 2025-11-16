@@ -9,7 +9,7 @@ The fastest way to create a new RASK project is using `create-rask-ui`:
 ::: code-group
 
 ```bash [npm]
-npmx rask-ui my-app
+npm create rask-ui my-app
 cd my-app
 npm run dev
 ```
@@ -27,7 +27,7 @@ yarn dev
 ```
 
 ```bash [bun]
-bunx create-rask-ui my-app
+bun create rask-ui my-app
 cd my-app
 bun run dev
 ```
@@ -38,7 +38,6 @@ This scaffolds a complete Vite + RASK project with:
 
 - ✅ Vite configured with the RASK plugin
 - ✅ TypeScript or JavaScript (your choice)
-- ✅ Hot Module Replacement (HMR)
 - ✅ Sample counter component
 
 Your app will be running at `http://localhost:5173`
@@ -92,11 +91,7 @@ Update your `tsconfig.json`:
 {
   "compilerOptions": {
     "jsx": "react-jsx",
-    "jsxImportSource": "rask-ui",
-    "moduleResolution": "bundler",
-    "target": "ES2022",
-    "module": "ESNext",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    "jsxImportSource": "rask-ui"
   }
 }
 ```
@@ -105,7 +100,6 @@ Update your `tsconfig.json`:
 
 - **`"jsx": "react-jsx"`** - Tells TypeScript to use the new JSX transform for type checking
 - **`"jsxImportSource": "rask-ui"`** - Points to RASK's JSX runtime for type definitions
-- **`"moduleResolution": "bundler"`** - Required for Vite
 
 #### How It Works
 
@@ -144,18 +138,18 @@ render(<Counter />, document.getElementById("app")!);
 
 ## Component Structure
 
-Components in RASK have two distinct phases:
+Stateful components in RASK have two distinct phases:
 
 ```tsx
 function MyComponent(props) {
-  // ✨ SETUP PHASE - Runs once when component is created
+  // SETUP PHASE - Runs once when component is created
   const state = createState({ value: props.initial });
 
   createMountEffect(() => {
     console.log("Component mounted!");
   });
 
-  // 🔄 RENDER PHASE - Returns a function that runs on every update
+  // RENDER PHASE - Returns a function that runs on every update
   return () => (
     <div>
       <p>{state.value}</p>
@@ -176,6 +170,16 @@ function MyComponent(props) {
   - Access reactive state
   - Generate JSX
   - All reactive dependencies are tracked automatically
+
+But you can also express plain stateless components that only takes props:
+
+```tsx
+function Header(props) {
+  return <h1>{props.children}</h1>;
+}
+```
+
+Notice that we are not returning a render function!
 
 ## Next Steps
 

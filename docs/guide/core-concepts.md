@@ -44,14 +44,13 @@ function TodoList() {
 3. **Efficient updates** - Only components that access changed properties re-render
 4. **Deep reactivity** - Nested objects and arrays are automatically reactive
 
-## Props are Reactive
+## Children reconciles
 
-Props passed to components are automatically reactive:
+Children passed to components behaves as you expect. They are used in the render scope to render the children.
 
 ```tsx
-function Child(props) {
-  // props is reactive - accessing props.value tracks the dependency
-  return () => <div>{props.value}</div>;
+function Header(props) {
+  return () => <h1>{props.children}</h1>;
 }
 
 function Parent() {
@@ -59,63 +58,50 @@ function Parent() {
 
   return () => (
     <div>
-      <Child value={state.count} />
+      <Header>Count is {state.count}</Header>
       <button onClick={() => state.count++}>Update</button>
     </div>
   );
 }
 ```
 
-When `state.count` changes in Parent, only Child re-renders because it accesses `props.value`.
+## Props reconcile and are reactive
+
+Props also behaves as you would expect in the render scope, but they are also reactive, meaning they can be used with `createEffect` or `createComputed`.
+
+```tsx
+function Header(props) {
+  const computed = createComputed({
+    double: () => props.count * 2,
+  });
+
+  createEffect(() => console.log(props.count));
+
+  return () => <h1>Count is {props.count}</h1>;
+}
+
+function Parent() {
+  const state = createState({ count: 0 });
+
+  return () => (
+    <div>
+      <Counter count={state.count} />
+      <button onClick={() => state.count++}>Update</button>
+    </div>
+  );
+}
+```
 
 ## The One Rule: Never Destructure
 
-**RASK has observable primitives**: Never destructure reactive objects (state, props, context values, async, query, mutation). Destructuring extracts plain values and breaks reactivity.
-
-::: danger ❌ BAD
-```tsx
-function Counter(props) {
-  const state = createState({ count: 0 });
-  const { count } = state; // Extracts plain value!
-
-  return () => <div>{count}</div>; // Won't update!
-}
-
-function Child({ value, name }) {
-  // Destructuring props!
-  return () => (
-    <div>
-      {value} {name}
-    </div>
-  ); // Won't update!
-}
-```
-:::
-
-::: tip ✅ GOOD
-```tsx
-function Counter(props) {
-  const state = createState({ count: 0 });
-
-  return () => <div>{state.count}</div>; // Reactive!
-}
-
-function Child(props) {
-  // Don't destructure
-  return () => (
-    <div>
-      {props.value} {props.name}
-    </div>
-  ); // Reactive!
-}
-```
-:::
+**RASK has observable primitives**: Never destructure reactive objects (state, props, context values, tasks). Destructuring extracts plain values and breaks reactivity.
 
 ### Why This Happens
 
 Reactive objects are implemented using JavaScript Proxies. When you access a property during render (e.g., `state.count`), the proxy tracks that dependency. But when you destructure (`const { count } = state`), the destructuring happens during setup—before any tracking context exists. You get a plain value instead of a tracked property access.
 
 **This applies to:**
+
 - `createState()` - Never destructure state objects
 - Props - Never destructure component props
 - `createContext().get()` - Never destructure context values
@@ -233,7 +219,9 @@ function ShoppingCart() {
       </ul>
       <p>Subtotal: ${computed.subtotal.toFixed(2)}</p>
       <p>Tax: ${computed.tax.toFixed(2)}</p>
-      <p><strong>Total: ${computed.total.toFixed(2)}</strong></p>
+      <p>
+        <strong>Total: ${computed.total.toFixed(2)}</strong>
+      </p>
     </div>
   );
 }

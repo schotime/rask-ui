@@ -15,14 +15,16 @@ pub struct Config {
 
 pub struct RaskComponentTransform {
     config: Config,
-    import_rask_component: Option<Ident>,
+    import_rask_stateful_component: Option<Ident>,
+    import_rask_stateless_component: Option<Ident>,
 }
 
 impl RaskComponentTransform {
     fn new(config: Config) -> Self {
         RaskComponentTransform {
             config,
-            import_rask_component: None,
+            import_rask_stateful_component: None,
+            import_rask_stateless_component: None,
         }
     }
 
@@ -100,7 +102,27 @@ impl RaskComponentTransform {
         }
     }
 
-    /// Check if a function body returns an arrow function with VNode calls
+    /// Check if a function body directly returns VNode calls (stateless component)
+    fn is_stateless_component(&self, func: &Function) -> bool {
+        if let Some(body) = &func.body {
+            for stmt in &body.stmts {
+                if let Stmt::Return(ret_stmt) = stmt {
+                    if let Some(ret_arg) = &ret_stmt.arg {
+                        // Check if directly returning VNode (not arrow function)
+                        if self.has_vnode_call(ret_arg) {
+                            // Make sure it's NOT an arrow function
+                            if !matches!(&**ret_arg, Expr::Arrow(_)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    /// Check if a function body returns an arrow function with VNode calls (stateful component)
     fn is_rask_component(&self, func: &Function) -> bool {
         if let Some(body) = &func.body {
             for stmt in &body.stmts {
@@ -135,14 +157,14 @@ impl RaskComponentTransform {
         false
     }
 
-    /// Transform a function declaration to a RaskComponent class
-    fn transform_to_class(&mut self, name: Ident, func: Function) -> Decl {
-        // Ensure we have the RaskComponent import
-        if self.import_rask_component.is_none() {
-            self.import_rask_component = Some(private_ident!("RaskComponent"));
+    /// Transform a function declaration to a RaskStatefulComponent class
+    fn transform_to_stateful_class(&mut self, name: Ident, func: Function) -> Decl {
+        // Ensure we have the RaskStatefulComponent import
+        if self.import_rask_stateful_component.is_none() {
+            self.import_rask_stateful_component = Some(private_ident!("RaskStatefulComponent"));
         }
 
-        let super_class_ident = self.import_rask_component.as_ref().unwrap().clone();
+        let super_class_ident = self.import_rask_stateful_component.as_ref().unwrap().clone();
 
         // Create the class property: setup = function name() { ... }
         let setup_prop = ClassMember::ClassProp(ClassProp {
@@ -181,6 +203,52 @@ impl RaskComponentTransform {
         })
     }
 
+    /// Transform a function declaration to a RaskStatelessComponent class
+    fn transform_to_stateless_class(&mut self, name: Ident, func: Function) -> Decl {
+        // Ensure we have the RaskStatelessComponent import
+        if self.import_rask_stateless_component.is_none() {
+            self.import_rask_stateless_component = Some(private_ident!("RaskStatelessComponent"));
+        }
+
+        let super_class_ident = self.import_rask_stateless_component.as_ref().unwrap().clone();
+
+        // Create the class property: renderFn = function name() { ... }
+        let render_prop = ClassMember::ClassProp(ClassProp {
+            span: Default::default(),
+            key: PropName::Ident(quote_ident!("renderFn").into()),
+            value: Some(Box::new(Expr::Fn(FnExpr {
+                ident: Some(name.clone()),
+                function: Box::new(func),
+            }))),
+            type_ann: None,
+            is_static: false,
+            decorators: vec![],
+            accessibility: None,
+            is_abstract: false,
+            is_optional: false,
+            is_override: false,
+            readonly: false,
+            declare: false,
+            definite: false,
+        });
+
+        Decl::Class(ClassDecl {
+            ident: name,
+            declare: false,
+            class: Box::new(Class {
+                span: Default::default(),
+                ctxt: Default::default(),
+                decorators: vec![],
+                body: vec![render_prop],
+                super_class: Some(Box::new(Expr::Ident(super_class_ident))),
+                is_abstract: false,
+                type_params: None,
+                super_type_params: None,
+                implements: vec![],
+            }),
+        })
+    }
+
     /// Rewrite imports from "inferno" to the configured import source
     fn rewrite_inferno_imports(&mut self, module: &mut Module) {
         let import_source = self
@@ -204,12 +272,8 @@ impl RaskComponentTransform {
         }
     }
 
-    /// Inject the RaskComponent import at the top of the module
+    /// Inject the RaskStatefulComponent and/or RaskStatelessComponent imports at the top of the module
     fn inject_runtime(&mut self, module: &mut Module) {
-        if self.import_rask_component.is_none() {
-            return;
-        }
-
         let import_source = self
             .config
             .import_source
@@ -217,47 +281,93 @@ impl RaskComponentTransform {
             .map(|s| s.as_str())
             .unwrap_or("rask-ui");
 
-        let rask_component_ident = self.import_rask_component.as_ref().unwrap();
+        let mut specifiers = vec![];
 
-        // Check if import already exists
-        for item in &module.body {
-            if let ModuleItem::ModuleDecl(ModuleDecl::Import(import)) = item {
-                if &*import.src.value == import_source {
-                    for spec in &import.specifiers {
-                        if let ImportSpecifier::Named(named) = spec {
-                            if let Some(ModuleExportName::Ident(imported)) = &named.imported {
-                                if &*imported.sym == "RaskComponent" {
-                                    return; // Import already exists
+        // Add RaskStatefulComponent if needed
+        if let Some(stateful_ident) = &self.import_rask_stateful_component {
+            // Check if import already exists
+            let mut exists = false;
+            for item in &module.body {
+                if let ModuleItem::ModuleDecl(ModuleDecl::Import(import)) = item {
+                    if &*import.src.value == import_source {
+                        for spec in &import.specifiers {
+                            if let ImportSpecifier::Named(named) = spec {
+                                if let Some(ModuleExportName::Ident(imported)) = &named.imported {
+                                    if &*imported.sym == "RaskStatefulComponent" {
+                                        exists = true;
+                                        break;
+                                    }
+                                } else if &*named.local.sym == "RaskStatefulComponent" {
+                                    exists = true;
+                                    break;
                                 }
-                            } else if &*named.local.sym == "RaskComponent" {
-                                return; // Import already exists
                             }
                         }
                     }
                 }
             }
+
+            if !exists {
+                specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
+                    span: Default::default(),
+                    local: stateful_ident.clone(),
+                    imported: Some(ModuleExportName::Ident(quote_ident!("RaskStatefulComponent").into())),
+                    is_type_only: false,
+                }));
+            }
         }
 
-        // Create new import
-        let import = ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
-            span: Default::default(),
-            specifiers: vec![ImportSpecifier::Named(ImportNamedSpecifier {
-                span: Default::default(),
-                local: rask_component_ident.clone(),
-                imported: Some(ModuleExportName::Ident(quote_ident!("RaskComponent").into())),
-                is_type_only: false,
-            })],
-            src: Box::new(Str {
-                span: Default::default(),
-                value: Wtf8Atom::from(import_source),
-                raw: None,
-            }),
-            type_only: false,
-            with: None,
-            phase: Default::default(),
-        }));
+        // Add RaskStatelessComponent if needed
+        if let Some(stateless_ident) = &self.import_rask_stateless_component {
+            // Check if import already exists
+            let mut exists = false;
+            for item in &module.body {
+                if let ModuleItem::ModuleDecl(ModuleDecl::Import(import)) = item {
+                    if &*import.src.value == import_source {
+                        for spec in &import.specifiers {
+                            if let ImportSpecifier::Named(named) = spec {
+                                if let Some(ModuleExportName::Ident(imported)) = &named.imported {
+                                    if &*imported.sym == "RaskStatelessComponent" {
+                                        exists = true;
+                                        break;
+                                    }
+                                } else if &*named.local.sym == "RaskStatelessComponent" {
+                                    exists = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
-        module.body.insert(0, import);
+            if !exists {
+                specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
+                    span: Default::default(),
+                    local: stateless_ident.clone(),
+                    imported: Some(ModuleExportName::Ident(quote_ident!("RaskStatelessComponent").into())),
+                    is_type_only: false,
+                }));
+            }
+        }
+
+        // Only create import if we have specifiers to add
+        if !specifiers.is_empty() {
+            let import = ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
+                span: Default::default(),
+                specifiers,
+                src: Box::new(Str {
+                    span: Default::default(),
+                    value: Wtf8Atom::from(import_source),
+                    raw: None,
+                }),
+                type_only: false,
+                with: None,
+                phase: Default::default(),
+            }));
+
+            module.body.insert(0, import);
+        }
     }
 }
 
@@ -278,11 +388,19 @@ impl VisitMut for RaskComponentTransform {
     fn visit_mut_module_item(&mut self, item: &mut ModuleItem) {
         match item {
             ModuleItem::Stmt(Stmt::Decl(Decl::Fn(fn_decl))) => {
-                // Check if this function should be transformed
+                // Check for stateful component first (returns arrow function)
                 if self.is_rask_component(&fn_decl.function) {
                     let name = fn_decl.ident.clone();
                     let func = (*fn_decl.function).clone();
-                    let class_decl = self.transform_to_class(name, func);
+                    let class_decl = self.transform_to_stateful_class(name, func);
+                    *item = ModuleItem::Stmt(Stmt::Decl(class_decl));
+                    return;
+                }
+                // Then check for stateless component (directly returns VNode)
+                else if self.is_stateless_component(&fn_decl.function) {
+                    let name = fn_decl.ident.clone();
+                    let func = (*fn_decl.function).clone();
+                    let class_decl = self.transform_to_stateless_class(name, func);
                     *item = ModuleItem::Stmt(Stmt::Decl(class_decl));
                     return;
                 }
@@ -295,16 +413,27 @@ impl VisitMut for RaskComponentTransform {
                         // but transform the pattern internally if needed
                         // For now, we'll skip transforming default exports
                         // as they need special handling
+                    } else if self.is_stateless_component(&fn_expr.function) {
+                        // Same for stateless default exports
                     }
                 }
             }
             ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(export)) => {
                 // Handle: export function MyComponent() { return () => <div /> }
                 if let Decl::Fn(fn_decl) = &mut export.decl {
+                    // Check for stateful component first
                     if self.is_rask_component(&fn_decl.function) {
                         let name = fn_decl.ident.clone();
                         let func = (*fn_decl.function).clone();
-                        let class_decl = self.transform_to_class(name, func);
+                        let class_decl = self.transform_to_stateful_class(name, func);
+                        export.decl = class_decl;
+                        return;
+                    }
+                    // Then check for stateless component
+                    else if self.is_stateless_component(&fn_decl.function) {
+                        let name = fn_decl.ident.clone();
+                        let func = (*fn_decl.function).clone();
+                        let class_decl = self.transform_to_stateless_class(name, func);
                         export.decl = class_decl;
                         return;
                     }

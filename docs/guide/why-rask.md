@@ -4,7 +4,7 @@ Modern UI frameworks force you to choose between simple state management and pow
 
 ## The Problem with Current Frameworks
 
-**React** excels at UI composition but creates mental strain with complex state management:
+**React** excels at UI composition by allowing you to use "just the language2, but creates mental strain with complex state management:
 
 - Understanding closure captures and stale state
 - Managing dependency arrays in hooks
@@ -15,7 +15,7 @@ Modern UI frameworks force you to choose between simple state management and pow
 
 - Compiler magic that transforms how your code executes
 - Special components for dynamic UIs (`<Show>`, `<For>`)
-- Different access patterns: `count()` vs `state.count`
+- Different access patterns (`count()` vs `state.count`) and special rules
 
 ## The RASK Solution
 
@@ -42,7 +42,7 @@ RASK is built on the belief that:
 1. **State management should be simple** - Observable primitives are intuitive
 2. **UI expression should be powerful** - Use the full language, not special components
 3. **No magic** - Code should run as written, no hidden transformations
-4. **Performance matters** - But shouldn't require manual optimization
+4. **Performance matters** - But fast enough is good enough, we do not want to hurt DX
 
 ## What Does "RASK" Mean?
 

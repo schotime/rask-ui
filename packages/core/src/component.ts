@@ -8,9 +8,35 @@ import {
 import { VNodeFlags } from "inferno-vnode-flags";
 import { getCurrentObserver, Observer, Signal } from "./observation";
 import { syncBatch } from "./batch";
-import { PROXY_MARKER } from "./createState";
 
-let currentComponent: RaskComponent<any> | undefined;
+export type RaskStatelessFunctionComponent<P extends Props<any>> =
+  | (() => VNode)
+  | ((props: P) => VNode);
+
+export class RaskStatelessComponent extends Component {
+  declare renderFn: RaskStatelessFunctionComponent<any>;
+  observer = new Observer(() => {
+    this.forceUpdate();
+  });
+  shouldComponentUpdate(nextProps: Props<any>): boolean {
+    for (const prop in nextProps) {
+      // @ts-ignore
+      if (this.props[prop] !== nextProps[prop]) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+  render() {
+    const stopObserving = this.observer.observe();
+    const result = this.renderFn(this.props);
+    stopObserving();
+    return result;
+  }
+}
+
+let currentComponent: RaskStatefulComponent<any> | undefined;
 
 export function getCurrentComponent() {
   if (!currentComponent) {
@@ -36,12 +62,12 @@ export function createCleanup(cb: () => void) {
   currentComponent.onCleanups.push(cb);
 }
 
-export type RaskFunctionComponent<P extends Props<any>> =
+export type RaskStatefulFunctionComponent<P extends Props<any>> =
   | (() => () => VNode)
   | ((props: P) => () => VNode);
 
-export class RaskComponent<P extends Props<any>> extends Component<P> {
-  declare setup: RaskFunctionComponent<P>;
+export class RaskStatefulComponent<P extends Props<any>> extends Component<P> {
+  declare setup: RaskStatefulFunctionComponent<P>;
   private renderFn?: () => VNode;
   private reactiveProps?: Props<any>;
   private observer = new Observer(() => {
@@ -146,10 +172,6 @@ export class RaskComponent<P extends Props<any>> extends Component<P> {
   shouldComponentUpdate(nextProps: Props<any>): boolean {
     // Shallow comparison of props, excluding internal props
     for (const prop in nextProps) {
-      if (prop === "__component") {
-        continue;
-      }
-
       // @ts-ignore
       if (this.props[prop] !== nextProps[prop]) {
         return true;
@@ -204,7 +226,7 @@ export class RaskComponent<P extends Props<any>> extends Component<P> {
 export function createComponent(props: Props<any>, key?: string) {
   return createComponentVNode(
     VNodeFlags.ComponentClass,
-    RaskComponent,
+    RaskStatefulComponent,
     props as any,
     key
   );

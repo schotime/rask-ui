@@ -1,5 +1,10 @@
 export { render } from "./render";
-export { createCleanup, createMountEffect, RaskComponent } from "./component";
+export {
+  createCleanup,
+  createMountEffect,
+  RaskStatefulComponent,
+  RaskStatelessComponent,
+} from "./component";
 export { createContext } from "./createContext";
 export { createState } from "./createState";
 export { createTask } from "./createTask";
