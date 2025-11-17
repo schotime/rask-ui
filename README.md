@@ -484,9 +484,41 @@ function Timer() {
 }
 ```
 
+**Effect with Disposal:**
+
+The callback can optionally return a dispose function that runs before the effect executes again:
+
+```tsx
+import { createEffect, createState } from "rask-ui";
+
+function LiveData() {
+  const state = createState({ url: "/api/data", data: null });
+
+  createEffect(() => {
+    const eventSource = new EventSource(state.url);
+
+    eventSource.onmessage = (event) => {
+      state.data = JSON.parse(event.data);
+    };
+
+    // Dispose function runs before effect re-executes
+    return () => {
+      eventSource.close();
+    };
+  });
+
+  return () => (
+    <div>
+      <input value={state.url} onInput={(e) => state.url = e.target.value} />
+      <pre>{JSON.stringify(state.data, null, 2)}</pre>
+    </div>
+  );
+}
+```
+
 **Parameters:**
 
-- `callback: () => void` - Function to run when dependencies change
+- `callback: () => void | (() => void)` - Function to run when dependencies change. Can optionally return a dispose function that runs before the effect executes again.
 
 **Features:**
 
@@ -494,13 +526,16 @@ function Timer() {
 - Automatically tracks reactive dependencies accessed during execution
 - Re-runs on microtask when dependencies change (prevents synchronous cascades)
 - Automatically cleaned up when component unmounts
-- Can be used for side effects like logging, syncing to localStorage, or updating derived state
+- Optional dispose function for cleaning up resources before re-execution
+- Can be used for side effects like logging, syncing to localStorage, managing subscriptions, or updating derived state
 
 **Notes:**
 
 - Only call during component setup phase (not in render function)
 - Effects are queued on microtask to avoid synchronous execution from prop changes
 - Be careful with effects that modify state - can cause infinite loops if not careful
+- Dispose functions run before the effect re-executes, not when the component unmounts
+- For component unmount cleanup, use `createCleanup()` instead
 
 ---
 

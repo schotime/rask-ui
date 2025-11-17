@@ -3,14 +3,16 @@
 Creates an effect that automatically tracks reactive dependencies and re-runs whenever they change. The effect runs immediately on creation.
 
 ```tsx
-createEffect(callback: () => void): void
+createEffect(callback: () => void | (() => void)): void
 ```
 
 ## Parameters
 
-- `callback: () => void` - Function to run when dependencies change
+- `callback: () => void | (() => void)` - Function to run when dependencies change. Can optionally return a dispose function that runs before the effect executes again
 
-## Example
+## Examples
+
+### Basic Effect
 
 ```tsx
 import { createEffect, createState } from "rask-ui";
@@ -38,12 +40,49 @@ function Timer() {
 }
 ```
 
+### Effect with Disposal
+
+The callback can return a dispose function that runs before the effect executes again. This is useful for cleaning up subscriptions, timers, or other resources:
+
+```tsx
+import { createEffect, createState } from "rask-ui";
+
+function LiveData() {
+  const state = createState({ url: "/api/data", data: null });
+
+  // Subscribe to data source, cleanup on re-run
+  createEffect(() => {
+    const eventSource = new EventSource(state.url);
+
+    eventSource.onmessage = (event) => {
+      state.data = JSON.parse(event.data);
+    };
+
+    // Dispose function runs before effect re-executes
+    return () => {
+      eventSource.close();
+    };
+  });
+
+  return () => (
+    <div>
+      <input
+        value={state.url}
+        onInput={(e) => state.url = e.target.value}
+      />
+      <pre>{JSON.stringify(state.data, null, 2)}</pre>
+    </div>
+  );
+}
+```
+
 ## Features
 
 - **Immediate execution** - Runs immediately on creation
 - **Automatic tracking** - Tracks reactive dependencies accessed during execution
 - **Microtask batching** - Re-runs on microtask when dependencies change
 - **Automatic cleanup** - Cleaned up when component unmounts
+- **Disposal support** - Optional dispose function for cleaning up resources before re-execution
 
 ## Use Cases
 
@@ -51,6 +90,9 @@ function Timer() {
 - Syncing to localStorage
 - Updating derived state
 - Side effects based on state
+- Managing subscriptions with automatic cleanup
+- Setting up and tearing down event listeners
+- Working with timers or intervals
 
 ## Notes
 
@@ -58,4 +100,6 @@ function Timer() {
 - Only call during component setup phase (not in render function)
 - Effects are queued on microtask to avoid synchronous execution
 - Be careful with effects that modify state - can cause infinite loops
+- Dispose functions run before the effect re-executes, not when the component unmounts
+- For component unmount cleanup, use `createCleanup()` instead
 :::

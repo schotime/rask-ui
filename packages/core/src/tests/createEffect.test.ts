@@ -383,4 +383,173 @@ describe("createEffect", () => {
     // Should see latest value when effect runs
     expect(results).toEqual([0, 3]);
   });
+
+  it("should call dispose function before re-executing", async () => {
+    const state = createState({ count: 0 });
+    const disposeCalls: number[] = [];
+    const effectCalls: number[] = [];
+
+    createEffect(() => {
+      effectCalls.push(state.count);
+
+      return () => {
+        // Dispose sees the current state at the time it's called
+        disposeCalls.push(state.count);
+      };
+    });
+
+    expect(effectCalls).toEqual([0]);
+    expect(disposeCalls).toEqual([]);
+
+    state.count = 1;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Dispose is called after state change, before effect re-runs
+    expect(disposeCalls).toEqual([1]);
+    expect(effectCalls).toEqual([0, 1]);
+
+    state.count = 2;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(disposeCalls).toEqual([1, 2]);
+    expect(effectCalls).toEqual([0, 1, 2]);
+  });
+
+  it("should handle dispose function with cleanup logic", async () => {
+    const state = createState({ url: "/api/data" });
+    const subscriptions: string[] = [];
+
+    createEffect(() => {
+      const currentUrl = state.url;
+      subscriptions.push(`subscribe:${currentUrl}`);
+
+      return () => {
+        subscriptions.push(`unsubscribe:${currentUrl}`);
+      };
+    });
+
+    expect(subscriptions).toEqual(["subscribe:/api/data"]);
+
+    state.url = "/api/users";
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(subscriptions).toEqual([
+      "subscribe:/api/data",
+      "unsubscribe:/api/data",
+      "subscribe:/api/users",
+    ]);
+
+    state.url = "/api/posts";
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(subscriptions).toEqual([
+      "subscribe:/api/data",
+      "unsubscribe:/api/data",
+      "subscribe:/api/users",
+      "unsubscribe:/api/users",
+      "subscribe:/api/posts",
+    ]);
+  });
+
+  it("should handle effects without dispose function", async () => {
+    const state = createState({ count: 0 });
+    const effectCalls: number[] = [];
+
+    createEffect(() => {
+      effectCalls.push(state.count);
+      // No dispose function returned
+    });
+
+    expect(effectCalls).toEqual([0]);
+
+    state.count = 1;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(effectCalls).toEqual([0, 1]);
+
+    state.count = 2;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(effectCalls).toEqual([0, 1, 2]);
+  });
+
+  it("should handle dispose function that throws error", async () => {
+    const state = createState({ count: 0 });
+    const effectCalls: number[] = [];
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    createEffect(() => {
+      effectCalls.push(state.count);
+
+      return () => {
+        throw new Error("Dispose error");
+      };
+    });
+
+    expect(effectCalls).toEqual([0]);
+
+    state.count = 1;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Effect should still have run despite dispose throwing
+    expect(effectCalls).toEqual([0, 1]);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Error in effect dispose function:",
+      expect.any(Error)
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("should call dispose with latest closure values", async () => {
+    const state = createState({ count: 0 });
+    const disposeValues: number[] = [];
+
+    createEffect(() => {
+      const capturedCount = state.count;
+
+      return () => {
+        disposeValues.push(capturedCount);
+      };
+    });
+
+    state.count = 1;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(disposeValues).toEqual([0]);
+
+    state.count = 5;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(disposeValues).toEqual([0, 1]);
+
+    state.count = 10;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(disposeValues).toEqual([0, 1, 5]);
+  });
+
+  it("should handle rapid state changes with dispose", async () => {
+    const state = createState({ count: 0 });
+    const effectFn = vi.fn(() => {
+      state.count;
+    });
+    const disposeFn = vi.fn();
+
+    createEffect(() => {
+      effectFn();
+      return disposeFn;
+    });
+
+    expect(effectFn).toHaveBeenCalledTimes(1);
+    expect(disposeFn).toHaveBeenCalledTimes(0);
+
+    // Rapid changes should batch
+    state.count = 1;
+    state.count = 2;
+    state.count = 3;
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Effect and dispose should each be called once more
+    expect(effectFn).toHaveBeenCalledTimes(2);
+    expect(disposeFn).toHaveBeenCalledTimes(1);
+  });
 });
