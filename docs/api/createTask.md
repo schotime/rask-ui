@@ -4,10 +4,10 @@ A low-level reactive primitive for managing any async operation. `createTask` pr
 
 ```tsx
 // Task without parameters
-createTask<T>(task: () => Promise<T>): Task<T>
+createTask<T>(task: (params: undefined, signal: AbortSignal) => Promise<T>): Task<T>
 
 // Task with parameters
-createTask<P, T>(task: (params: P) => Promise<T>): Task<P, T>
+createTask<P, T>(task: (params: P, signal: AbortSignal) => Promise<T>): Task<P, T>
 ```
 
 ## Type
@@ -33,8 +33,13 @@ const myTask: Task<number, User>;
 
 ## Parameters
 
-- `task: () => Promise<T>` - Async function without parameters
-- `task: (params: P) => Promise<T>` - Async function with parameters
+- `task: (params: undefined, signal: AbortSignal) => Promise<T>` - Async function without parameters, receives an AbortSignal
+- `task: (params: P, signal: AbortSignal) => Promise<T>` - Async function with parameters, receives an AbortSignal
+
+The `signal` parameter is an `AbortSignal` that can be used to:
+- Pass to fetch requests to cancel network calls when the task is aborted
+- Detect if the task was cancelled/rerun after async operations complete
+- Implement custom state management by checking `signal.aborted`
 
 ## Returns
 
@@ -192,11 +197,84 @@ function CreatePost() {
 }
 ```
 
+## Using the Signal Parameter
+
+The signal parameter is particularly useful for managing async operations properly:
+
+### Cancelling Fetch Requests
+
+```tsx
+function SearchComponent() {
+  const state = createState({ query: "" });
+
+  const search = createTask((query: string, signal: AbortSignal) =>
+    fetch(`/api/search?q=${query}`, { signal }).then((r) => r.json())
+  );
+
+  createEffect(() => {
+    if (state.query) {
+      search.run(state.query);
+    }
+  });
+
+  return () => (
+    <div>
+      <input
+        value={state.query}
+        onInput={(e) => (state.query = e.target.value)}
+      />
+      {search.result && (
+        <ul>
+          {search.result.map((item) => (
+            <li key={item.id}>{item.name}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+```
+
+### Detecting Cancellation for Custom State
+
+```tsx
+function CustomLoadingState() {
+  const state = createState({ data: null, customLoading: false });
+
+  const loadData = createTask(async (id: number, signal: AbortSignal) => {
+    // Set custom loading state
+    state.customLoading = true;
+
+    const result = await fetch(`/api/data/${id}`).then((r) => r.json());
+
+    // Check if the task was cancelled/rerun after the async operation
+    if (signal.aborted) {
+      // Don't update state if cancelled
+      return result;
+    }
+
+    // Update custom state only if not cancelled
+    state.data = result;
+    state.customLoading = false;
+    return result;
+  });
+
+  return () => (
+    <div>
+      {state.customLoading && <p>Custom loading indicator...</p>}
+      {state.data && <p>Data: {JSON.stringify(state.data)}</p>}
+      <button onClick={() => loadData.run(1)}>Load</button>
+    </div>
+  );
+}
+```
+
 ## Features
 
 - **Automatic cancellation** - Previous executions are cancelled when a new one starts
 - **Flexible control** - Use `run()` to clear old data or `rerun()` to keep it during loading
 - **Type-safe** - Full TypeScript inference for parameters and results
+- **Signal support** - AbortSignal provided for cancellation detection and request cancellation
 - **Low-level primitive** - Build any async pattern on top (queries, mutations, polling, etc.)
 - **Reactive state** - All task properties are reactive and tracked automatically
 

@@ -903,13 +903,13 @@ function TodoList() {
 
 ```tsx
 // Task without parameters - auto-runs on creation
-createTask<T>(task: () => Promise<T>): Task<T> & {
+createTask<T>(task: (params: undefined, signal: AbortSignal) => Promise<T>): Task<T> & {
   run(): Promise<T>;
   rerun(): Promise<T>;
 }
 
 // Task with parameters - manual control
-createTask<P, T>(task: (params: P) => Promise<T>): Task<P, T> & {
+createTask<P, T>(task: (params: P, signal: AbortSignal) => Promise<T>): Task<P, T> & {
   run(params: P): Promise<T>;
   rerun(params: P): Promise<T>;
 }
@@ -966,12 +966,82 @@ Error:
 { isRunning: false, params: null, result: null, error: string }
 ```
 
+**Signal Parameter:**
+
+The task callback receives an `AbortSignal` as the second parameter. This signal is useful for:
+
+- **Passing to fetch requests** - Cancel network requests when the task is aborted
+- **Detecting cancellation** - Check if the task was cancelled after async operations complete
+- **Custom state management** - Detect if the task was rerun and implement your own cleanup logic
+
+```tsx
+function SearchPosts() {
+  const state = createState({ query: "" });
+
+  const search = createTask((query: string, signal: AbortSignal) =>
+    fetch(`/api/search?q=${query}`, { signal }).then((r) => r.json())
+  );
+
+  createEffect(() => {
+    if (state.query) {
+      search.run(state.query);
+    }
+  });
+
+  return () => (
+    <div>
+      <input
+        value={state.query}
+        onInput={(e) => (state.query = e.target.value)}
+      />
+      {search.isRunning && <p>Searching...</p>}
+      {search.result && (
+        <ul>
+          {search.result.map((post) => (
+            <li key={post.id}>{post.title}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// Detecting cancellation for custom state management
+function CustomStateExample() {
+  const state = createState({ data: null, customLoading: false });
+
+  const task = createTask(async (id: number, signal: AbortSignal) => {
+    state.customLoading = true;
+    const result = await fetch(`/api/data/${id}`).then((r) => r.json());
+
+    // Check if task was cancelled/rerun after the async operation
+    if (signal.aborted) {
+      // Don't update state if the task was cancelled
+      return result;
+    }
+
+    state.data = result;
+    state.customLoading = false;
+    return result;
+  });
+
+  return () => (
+    <div>
+      {state.customLoading && <p>Loading...</p>}
+      {state.data && <p>Data: {JSON.stringify(state.data)}</p>}
+      <button onClick={() => task.run(1)}>Load Data</button>
+    </div>
+  );
+}
+```
+
 **Features:**
 
 - **Automatic cancellation** - Previous executions are cancelled when a new one starts
 - **Flexible control** - Use `run()` to clear old data or `rerun()` to keep it during loading
 - **Type-safe** - Full TypeScript inference for parameters and results
 - **Auto-run support** - Tasks without parameters run automatically on creation
+- **Signal support** - AbortSignal provided for cancellation detection and request cancellation
 - **Generic primitive** - Build your own patterns on top (queries, mutations, etc.)
 
 **Usage Patterns:**

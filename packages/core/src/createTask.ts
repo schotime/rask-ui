@@ -36,9 +36,15 @@ export type Task<A, B = never> = [B] extends [never]
       rerun(params: A): Promise<B>;
     };
 
-export function createTask<T>(task: () => Promise<T>): Task<T>;
-export function createTask<P, T>(task: (params: P) => Promise<T>): Task<P, T>;
-export function createTask<P, T>(task: (params?: P) => Promise<T>) {
+export function createTask<T>(
+  task: (params: undefined, signal: AbortSignal) => Promise<T>
+): Task<T>;
+export function createTask<P, T>(
+  task: (params: P, signal: AbortSignal) => Promise<T>
+): Task<P, T>;
+export function createTask<P, T>(
+  task: (params: P | undefined, signal: AbortSignal) => Promise<T>
+) {
   const state = createState<TaskState<P, T>>({
     isRunning: false,
     result: null,
@@ -52,7 +58,7 @@ export function createTask<P, T>(task: (params?: P) => Promise<T>) {
     currentAbortController?.abort();
 
     const abortController = (currentAbortController = new AbortController());
-    const promise = task(params);
+    const promise = task(params, abortController.signal);
 
     promise
       .then((result) => {
