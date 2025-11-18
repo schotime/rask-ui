@@ -13,7 +13,8 @@
     "strict": true,
     "noEmit": false,
     "jsx": "react-jsx",
-    "jsxImportSource": "."
+    "jsxImportSource": "rask-ui",
+    "baseUrl": "."
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

@@ -11,5 +11,6 @@
 - [**createCleanup**](/api/createCleanup) - Register cleanup function
 - [**createContext**](/api/createContext) - Create a context for sharing values
 - [**createTask**](/api/createTask) - Manage async operations
+- [**createRouter**](/api/createRouter) - Client-side routing with type-safe navigation
 - [**ErrorBoundary**](/api/ErrorBoundary) - Catch and handle errors
 - [**inspect**](/api/inspect) - Inspect reactive state changes

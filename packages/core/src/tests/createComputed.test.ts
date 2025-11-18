@@ -146,7 +146,11 @@ describe("createComputed", () => {
       multiplier: 2,
     });
 
-    const computed = createComputed({
+    const computed: {
+      total: number;
+      multipliedTotal: number;
+      average: number;
+    } = createComputed({
       total: () => state.items.reduce((sum, item) => sum + item, 0),
       multipliedTotal: () => computed.total * state.multiplier,
       average: () => computed.total / state.items.length,

@@ -988,6 +988,223 @@ Error:
 
 ---
 
+### Routing
+
+#### `createRouter<T>(config, options?)`
+
+Creates a reactive router for client-side navigation. Built on [typed-client-router](https://github.com/christianalfoni/typed-client-router), it integrates seamlessly with RASK's reactive system for fully type-safe routing.
+
+```tsx
+import { createRouter } from "rask-ui";
+
+const routes = {
+  home: "/",
+  about: "/about",
+  user: "/users/:id",
+  post: "/posts/:id",
+} as const;
+
+function App() {
+  const router = createRouter(routes);
+
+  return () => {
+    // Match current route
+    if (router.route?.name === "home") {
+      return <Home />;
+    }
+
+    if (router.route?.name === "user") {
+      return <User id={router.route.params.id} />;
+    }
+
+    if (router.route?.name === "post") {
+      return <Post id={router.route.params.id} />;
+    }
+
+    return <NotFound />;
+  };
+}
+```
+
+**Parameters:**
+
+- `config: T` - Route configuration object mapping route names to path patterns
+- `options?: { base?: string }` - Optional base path for all routes
+
+**Returns:** Router object with reactive state and navigation methods:
+
+**Properties:**
+- `route?: Route` - Current active route with `name` and `params` properties (reactive)
+- `queries: Record<string, string>` - Current URL query parameters (reactive)
+
+**Methods:**
+- `push(name, params?, query?)` - Navigate to a route by name
+- `replace(name, params?, query?)` - Replace current route (no history entry)
+- `setQuery(query)` - Update query parameters
+- `url(name, params?, query?)` - Generate URL for a route
+
+**Route Configuration:**
+
+Define routes with path patterns. Use `:param` for dynamic segments:
+
+```tsx
+const routes = {
+  home: "/",
+  users: "/users",
+  user: "/users/:id",
+  userPosts: "/users/:userId/posts/:postId",
+} as const;
+```
+
+**Navigation:**
+
+Navigate programmatically using route names:
+
+```tsx
+function Navigation() {
+  const router = createRouter(routes);
+
+  return () => (
+    <nav>
+      <button onClick={() => router.push("home")}>Home</button>
+      <button onClick={() => router.push("user", { id: "123" })}>
+        User 123
+      </button>
+      <button onClick={() => router.push("home", {}, { tab: "recent" })}>
+        Home (Recent)
+      </button>
+    </nav>
+  );
+}
+```
+
+**Query Parameters:**
+
+Access and modify query parameters:
+
+```tsx
+function SearchPage() {
+  const router = createRouter(routes);
+
+  return () => (
+    <div>
+      <p>Search: {router.queries.q || "none"}</p>
+      <input
+        value={router.queries.q || ""}
+        onInput={(e) => router.setQuery({ q: e.target.value })}
+      />
+    </div>
+  );
+}
+```
+
+**Reactive Routing:**
+
+The router integrates with RASK's reactivity system. Accessing `router.route` or `router.queries` automatically tracks dependencies:
+
+```tsx
+function App() {
+  const router = createRouter(routes);
+  const state = createState({ posts: [] });
+
+  // Effect runs when route changes
+  createEffect(() => {
+    if (router.route?.name === "user") {
+      // Fetch user data when route changes
+      fetch(`/api/users/${router.route.params.id}`)
+        .then((r) => r.json())
+        .then((data) => (state.posts = data.posts));
+    }
+  });
+
+  return () => (
+    <div>
+      {router.route?.name === "user" && (
+        <div>
+          <h1>User {router.route.params.id}</h1>
+          <ul>
+            {state.posts.map((post) => (
+              <li key={post.id}>{post.title}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+**Type Safety:**
+
+Routes are fully type-safe. TypeScript will infer parameter types from route patterns:
+
+```tsx
+const routes = {
+  user: "/users/:id",
+  post: "/posts/:postId/:commentId",
+} as const;
+
+const router = createRouter(routes);
+
+// ✅ Type-safe - id is required
+router.push("user", { id: "123" });
+
+// ❌ Type error - missing required params
+router.push("post", { postId: "1" }); // Error: missing commentId
+
+// ✅ Type-safe params access
+if (router.route?.name === "post") {
+  const postId = router.route.params.postId; // string
+  const commentId = router.route.params.commentId; // string
+}
+```
+
+**Context Pattern:**
+
+Share router across components using context:
+
+```tsx
+import { createRouter, createContext } from "rask-ui";
+
+const routes = {
+  home: "/",
+  about: "/about",
+} as const;
+
+const RouterContext = createContext<Router<typeof routes>>();
+
+function App() {
+  const router = createRouter(routes);
+
+  RouterContext.inject(router);
+
+  return () => <Content />;
+}
+
+function Content() {
+  const router = RouterContext.get();
+
+  return () => (
+    <nav>
+      <button onClick={() => router.push("home")}>Home</button>
+      <button onClick={() => router.push("about")}>About</button>
+    </nav>
+  );
+}
+```
+
+**Features:**
+
+- **Type-safe** - Full TypeScript inference for routes and parameters
+- **Reactive** - Automatically tracks route changes
+- **Declarative** - Navigate using route names, not URLs
+- **Query parameters** - Built-in query string management
+- **No special components** - Use standard conditionals and component composition
+- **History API** - Built on the browser's History API
+- **Automatic cleanup** - Router listener cleaned up when component unmounts
+
+---
+
 ### Developer Tools
 
 #### `inspect(root, callback)`
