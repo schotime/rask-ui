@@ -7,12 +7,7 @@ export function createComputed<T extends Record<string, () => any>>(
 ): {
   [K in keyof T]: ReturnType<T[K]>;
 } {
-  let currentComponent;
-  try {
-    currentComponent = getCurrentComponent();
-  } catch {
-    currentComponent = undefined;
-  }
+  const currentComponent = getCurrentComponent();
   const proxy = {};
   let notifyInspectorRef: InspectorRef = {};
 
@@ -33,9 +28,7 @@ export function createComputed<T extends Record<string, () => any>>(
       }
     });
 
-    if (currentComponent) {
-      createCleanup(() => computedObserver.dispose());
-    }
+    createCleanup(() => computedObserver.dispose());
 
     Object.defineProperty(proxy, prop, {
       enumerable: true,

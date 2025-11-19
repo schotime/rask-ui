@@ -1,3 +1,4 @@
+import { createCleanup, getCurrentComponent } from "./component";
 import { assignState, createState } from "./createState";
 
 export type TaskState<P, T> =
@@ -45,6 +46,11 @@ export function createTask<P, T>(
 export function createTask<P, T>(
   task: (params: P | undefined, signal: AbortSignal) => Promise<T>
 ) {
+  const currentComponent = getCurrentComponent();
+  if (!currentComponent || currentComponent.isRendering) {
+    throw new Error("Only use createTask in component setup");
+  }
+
   const state = createState<TaskState<P, T>>({
     isRunning: false,
     result: null,
@@ -87,6 +93,8 @@ export function createTask<P, T>(
 
     return promise;
   };
+
+  createCleanup(() => currentAbortController?.abort());
 
   return {
     get isRunning() {

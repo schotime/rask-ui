@@ -1,3 +1,4 @@
+import { getCurrentComponent } from "./component";
 import { INSPECT_MARKER, INSPECTOR_ENABLED, InspectorRef } from "./inspect";
 
 /**
@@ -41,6 +42,10 @@ export function createView<T extends readonly object[]>(
   ...args: T
 ): MergeMany<T>;
 export function createView(...args: readonly object[]): any {
+  if (!getCurrentComponent()) {
+    throw new Error("Only use createView in component setup");
+  }
+
   const result: any = {};
   const seen = new Set<PropertyKey>();
   let notifyInspectorRef: InspectorRef = {};

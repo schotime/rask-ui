@@ -1,3 +1,4 @@
+import { getCurrentComponent } from "./component";
 import { INSPECT_MARKER, INSPECTOR_ENABLED, InspectorRef } from "./inspect";
 import { getCurrentObserver, Signal } from "./observation";
 
@@ -30,6 +31,11 @@ export function assignState<T extends object>(state: T, newState: T) {
  * @returns A reactive proxy of the state object
  */
 export function createState<T extends object>(state: T): T {
+  if (getCurrentComponent()?.isRendering) {
+    throw new Error(
+      "createState cannot be called during render. Call it in component setup or globally."
+    );
+  }
   return getProxy(state, {}) as any;
 }
 

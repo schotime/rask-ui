@@ -5,7 +5,7 @@ import {
   TRoutes,
 } from "typed-client-router";
 import { getCurrentObserver, Signal } from "./observation";
-import { createCleanup } from "./component";
+import { createCleanup, getCurrentComponent } from "./component";
 
 export type Router<T extends RoutesConfig> = Omit<
   TRouter<T>,
@@ -20,6 +20,10 @@ export function createRouter<const T extends RoutesConfig>(
     base?: string;
   }
 ): Router<T> {
+  if (!getCurrentComponent()) {
+    throw new Error("Only use createRouter in component setup");
+  }
+
   const router = internalCreateRouter(config, options);
   const signal = new Signal();
 

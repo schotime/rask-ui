@@ -82,7 +82,7 @@ describe("createContext", () => {
 
     expect(() => {
       ThemeContext.inject({ theme: "dark" });
-    }).toThrow("No current component");
+    }).toThrow("You can not inject context outside component setup");
   });
 
   it("should throw error when getting context outside component", () => {
@@ -90,7 +90,7 @@ describe("createContext", () => {
 
     expect(() => {
       ThemeContext.get();
-    }).toThrow("No current component");
+    }).toThrow("You can not get context outside component setup");
   });
 
   it("should allow overriding context in nested components", () => {

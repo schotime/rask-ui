@@ -26,6 +26,7 @@ export class RaskStatelessComponent extends Component {
   render() {
     const stopObserving = this.observer.observe();
     const result = this.renderFn(this.props);
+
     stopObserving();
     return result;
   }
@@ -34,10 +35,6 @@ export class RaskStatelessComponent extends Component {
 let currentComponent: RaskStatefulComponent<any> | undefined;
 
 export function getCurrentComponent() {
-  if (!currentComponent) {
-    throw new Error("No current component");
-  }
-
   return currentComponent;
 }
 
@@ -50,7 +47,7 @@ export function createMountEffect(cb: () => void) {
 }
 
 export function createCleanup(cb: () => void) {
-  if (!currentComponent) {
+  if (!currentComponent || currentComponent.isRendering) {
     throw new Error("Only use createCleanup in component setup");
   }
 
@@ -72,7 +69,7 @@ export class RaskStatefulComponent<P extends Props<any>> extends Component<P> {
     this.forceUpdate();
   });
   // Flag to prevent props from tracking in render scope (We use props reconciliation)
-  private isRendering = false;
+  isRendering = false;
   // Flag to prevent observer notifications to cause render during reconciliation
   private willRender = true;
   // Since reactive props updates before the reconciliation (without causing a new one), we
@@ -188,9 +185,9 @@ export class RaskStatefulComponent<P extends Props<any>> extends Component<P> {
     return false;
   }
   render() {
+    currentComponent = this;
     if (!this.renderFn) {
       this.reactiveProps = this.createReactiveProps();
-      currentComponent = this;
       try {
         this.renderFn = this.setup(this.reactiveProps as any);
 
@@ -206,7 +203,6 @@ export class RaskStatefulComponent<P extends Props<any>> extends Component<P> {
 
         return null;
       }
-      currentComponent = undefined;
     }
 
     const stopObserving = this.observer.observe();
@@ -214,6 +210,7 @@ export class RaskStatefulComponent<P extends Props<any>> extends Component<P> {
 
     try {
       this.isRendering = true;
+      console.log("WTF", this.setup.name);
       result = this.renderFn();
       this.isRendering = false;
       this.willRender = false;
@@ -225,6 +222,7 @@ export class RaskStatefulComponent<P extends Props<any>> extends Component<P> {
       this.context.notifyError(error);
     } finally {
       stopObserving();
+      currentComponent = undefined;
     }
 
     return result;

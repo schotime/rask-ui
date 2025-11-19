@@ -28,6 +28,7 @@ const myTask: Task<number, User>;
 ```
 
 **Type Parameters:**
+
 - `Task<T>` - Task with no parameters, returns type `T`
 - `Task<P, T>` - Task with parameters of type `P`, returns type `T`
 
@@ -37,6 +38,7 @@ const myTask: Task<number, User>;
 - `task: (params: P, signal: AbortSignal) => Promise<T>` - Async function with parameters, receives an AbortSignal
 
 The `signal` parameter is an `AbortSignal` that can be used to:
+
 - Pass to fetch requests to cancel network calls when the task is aborted
 - Detect if the task was cancelled/rerun after async operations complete
 - Implement custom state management by checking `signal.aborted`
@@ -235,12 +237,10 @@ function SearchComponent() {
 }
 ```
 
-### Detecting Cancellation for Custom State
+### Detecting Cancellation in Multi Step
 
 ```tsx
 function CustomLoadingState() {
-  const state = createState({ data: null, customLoading: false });
-
   const loadData = createTask(async (id: number, signal: AbortSignal) => {
     // Set custom loading state
     state.customLoading = true;
@@ -249,23 +249,14 @@ function CustomLoadingState() {
 
     // Check if the task was cancelled/rerun after the async operation
     if (signal.aborted) {
-      // Don't update state if cancelled
-      return result;
+      return;
     }
 
-    // Update custom state only if not cancelled
-    state.data = result;
-    state.customLoading = false;
-    return result;
+    // Now this does not run if the task was rerun in the meantime
+    await doSomethingMoreAsync(result);
   });
 
-  return () => (
-    <div>
-      {state.customLoading && <p>Custom loading indicator...</p>}
-      {state.data && <p>Data: {JSON.stringify(state.data)}</p>}
-      <button onClick={() => loadData.run(1)}>Load</button>
-    </div>
-  );
+  return () => <div></div>;
 }
 ```
 

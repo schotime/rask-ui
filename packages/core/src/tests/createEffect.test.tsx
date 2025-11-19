@@ -7,18 +7,32 @@ describe("createEffect", () => {
   it("should run immediately on creation", () => {
     const effectFn = vi.fn();
 
-    createEffect(effectFn);
+    function Component() {
+      createEffect(effectFn);
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(effectFn).toHaveBeenCalledTimes(1);
   });
 
   it("should track reactive dependencies", async () => {
-    const state = createState({ count: 0 });
-    const effectFn = vi.fn(() => {
-      state.count; // Access to track
-    });
+    const effectFn = vi.fn();
+    let state: ReturnType<typeof createState<{ count: number }>>;
 
-    createEffect(effectFn);
+    function Component() {
+      state = createState({ count: 0 });
+      createEffect(() => {
+        effectFn();
+        state.count; // Access to track
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(effectFn).toHaveBeenCalledTimes(1);
 
@@ -29,12 +43,19 @@ describe("createEffect", () => {
   });
 
   it("should re-run when dependencies change", async () => {
-    const state = createState({ count: 0 });
     const results: number[] = [];
+    let state: ReturnType<typeof createState<{ count: number }>>;
 
-    createEffect(() => {
-      results.push(state.count);
-    });
+    function Component() {
+      state = createState({ count: 0 });
+      createEffect(() => {
+        results.push(state.count);
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(results).toEqual([0]);
 
@@ -50,12 +71,19 @@ describe("createEffect", () => {
   });
 
   it("should run on microtask, not synchronously", () => {
-    const state = createState({ count: 0 });
     const results: number[] = [];
+    let state: ReturnType<typeof createState<{ count: number }>>;
 
-    createEffect(() => {
-      results.push(state.count);
-    });
+    function Component() {
+      state = createState({ count: 0 });
+      createEffect(() => {
+        results.push(state.count);
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(results).toEqual([0]); // Initial run is synchronous
 
@@ -66,17 +94,24 @@ describe("createEffect", () => {
   });
 
   it("should handle multiple effects on same state", async () => {
-    const state = createState({ count: 0 });
     const results1: number[] = [];
     const results2: number[] = [];
+    let state: ReturnType<typeof createState<{ count: number }>>;
 
-    createEffect(() => {
-      results1.push(state.count);
-    });
+    function Component() {
+      state = createState({ count: 0 });
+      createEffect(() => {
+        results1.push(state.count);
+      });
 
-    createEffect(() => {
-      results2.push(state.count * 2);
-    });
+      createEffect(() => {
+        results2.push(state.count * 2);
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(results1).toEqual([0]);
     expect(results2).toEqual([0]);
@@ -89,12 +124,20 @@ describe("createEffect", () => {
   });
 
   it("should only track dependencies accessed during execution", async () => {
-    const state = createState({ a: 1, b: 2 });
-    const effectFn = vi.fn(() => {
-      state.a; // Only track 'a'
-    });
+    const effectFn = vi.fn();
+    let state: ReturnType<typeof createState<{ a: number; b: number }>>;
 
-    createEffect(effectFn);
+    function Component() {
+      state = createState({ a: 1, b: 2 });
+      createEffect(() => {
+        effectFn();
+        state.a; // Only track 'a'
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(effectFn).toHaveBeenCalledTimes(1);
 
@@ -112,16 +155,26 @@ describe("createEffect", () => {
   });
 
   it("should re-track dependencies on each run", async () => {
-    const state = createState({ useA: true, a: 1, b: 2 });
-    const effectFn = vi.fn(() => {
-      if (state.useA) {
-        state.a;
-      } else {
-        state.b;
-      }
-    });
+    const effectFn = vi.fn();
+    let state: ReturnType<
+      typeof createState<{ useA: boolean; a: number; b: number }>
+    >;
 
-    createEffect(effectFn);
+    function Component() {
+      state = createState({ useA: true, a: 1, b: 2 });
+      createEffect(() => {
+        effectFn();
+        if (state.useA) {
+          state.a;
+        } else {
+          state.b;
+        }
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(effectFn).toHaveBeenCalledTimes(1);
 
@@ -152,11 +205,19 @@ describe("createEffect", () => {
   });
 
   it("should handle effects that modify state", async () => {
-    const state = createState({ input: 1, output: 0 });
+    let state: ReturnType<typeof createState<{ input: number; output: number }>>;
 
-    createEffect(() => {
-      state.output = state.input * 2;
-    });
+    function Component() {
+      state = createState({ input: 1, output: 0 });
+
+      createEffect(() => {
+        state.output = state.input * 2;
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(state.output).toBe(2);
 
@@ -167,18 +228,34 @@ describe("createEffect", () => {
   });
 
   it("should handle nested state access", async () => {
-    const state = createState({
-      user: {
-        profile: {
-          name: "Alice",
-        },
-      },
-    });
     const results: string[] = [];
+    let state: ReturnType<
+      typeof createState<{
+        user: {
+          profile: {
+            name: string;
+          };
+        };
+      }>
+    >;
 
-    createEffect(() => {
-      results.push(state.user.profile.name);
-    });
+    function Component() {
+      state = createState({
+        user: {
+          profile: {
+            name: "Alice",
+          },
+        },
+      });
+
+      createEffect(() => {
+        results.push(state.user.profile.name);
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(results).toEqual(["Alice"]);
 
@@ -189,12 +266,20 @@ describe("createEffect", () => {
   });
 
   it("should handle array access", async () => {
-    const state = createState({ items: [1, 2, 3] });
     const results: number[] = [];
+    let state: ReturnType<typeof createState<{ items: number[] }>>;
 
-    createEffect(() => {
-      results.push(state.items.length);
-    });
+    function Component() {
+      state = createState({ items: [1, 2, 3] });
+
+      createEffect(() => {
+        results.push(state.items.length);
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(results).toEqual([3]);
 
@@ -210,13 +295,21 @@ describe("createEffect", () => {
   });
 
   it("should handle effects accessing array elements", async () => {
-    const state = createState({ items: [1, 2, 3] });
     const results: number[] = [];
+    let state: ReturnType<typeof createState<{ items: number[] }>>;
 
-    createEffect(() => {
-      const sum = state.items.reduce((acc, val) => acc + val, 0);
-      results.push(sum);
-    });
+    function Component() {
+      state = createState({ items: [1, 2, 3] });
+
+      createEffect(() => {
+        const sum = state.items.reduce((acc, val) => acc + val, 0);
+        results.push(sum);
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(results).toEqual([6]);
 
@@ -232,13 +325,21 @@ describe("createEffect", () => {
   });
 
   it("should batch multiple state changes before re-running", async () => {
-    const state = createState({ a: 1, b: 2 });
-    const effectFn = vi.fn(() => {
-      state.a;
-      state.b;
-    });
+    const effectFn = vi.fn();
+    let state: ReturnType<typeof createState<{ a: number; b: number }>>;
 
-    createEffect(effectFn);
+    function Component() {
+      state = createState({ a: 1, b: 2 });
+      createEffect(() => {
+        effectFn();
+        state.a;
+        state.b;
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(effectFn).toHaveBeenCalledTimes(1);
 
@@ -256,10 +357,16 @@ describe("createEffect", () => {
   it("should handle effects with no dependencies", async () => {
     let runCount = 0;
 
-    createEffect(() => {
-      runCount++;
-      // No reactive state accessed
-    });
+    function Component() {
+      createEffect(() => {
+        runCount++;
+        // No reactive state accessed
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(runCount).toBe(1);
 
@@ -270,14 +377,24 @@ describe("createEffect", () => {
   });
 
   it("should handle effects that conditionally access state", async () => {
-    const state = createState({ enabled: true, value: 5 });
-    const effectFn = vi.fn(() => {
-      if (state.enabled) {
-        state.value;
-      }
-    });
+    const effectFn = vi.fn();
+    let state: ReturnType<
+      typeof createState<{ enabled: boolean; value: number }>
+    >;
 
-    createEffect(effectFn);
+    function Component() {
+      state = createState({ enabled: true, value: 5 });
+      createEffect(() => {
+        effectFn();
+        if (state.enabled) {
+          state.value;
+        }
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(effectFn).toHaveBeenCalledTimes(1);
 
@@ -298,16 +415,26 @@ describe("createEffect", () => {
   });
 
   it("should handle complex dependency graphs", async () => {
-    const state = createState({
-      multiplier: 2,
-      values: [1, 2, 3],
-    });
     const results: number[] = [];
+    let state: ReturnType<
+      typeof createState<{ multiplier: number; values: number[] }>
+    >;
 
-    createEffect(() => {
-      const sum = state.values.reduce((acc, val) => acc + val, 0);
-      results.push(sum * state.multiplier);
-    });
+    function Component() {
+      state = createState({
+        multiplier: 2,
+        values: [1, 2, 3],
+      });
+
+      createEffect(() => {
+        const sum = state.values.reduce((acc, val) => acc + val, 0);
+        results.push(sum * state.multiplier);
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(results).toEqual([12]); // (1+2+3) * 2
 
@@ -321,15 +448,23 @@ describe("createEffect", () => {
   });
 
   it("should handle effects that run other synchronous code", async () => {
-    const state = createState({ count: 0 });
     const sideEffects: string[] = [];
+    let state: ReturnType<typeof createState<{ count: number }>>;
 
-    createEffect(() => {
-      sideEffects.push("effect-start");
-      const value = state.count;
-      sideEffects.push(`value-${value}`);
-      sideEffects.push("effect-end");
-    });
+    function Component() {
+      state = createState({ count: 0 });
+
+      createEffect(() => {
+        sideEffects.push("effect-start");
+        const value = state.count;
+        sideEffects.push(`value-${value}`);
+        sideEffects.push("effect-end");
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(sideEffects).toEqual(["effect-start", "value-0", "effect-end"]);
 
@@ -347,12 +482,20 @@ describe("createEffect", () => {
   });
 
   it("should handle rapid state changes", async () => {
-    const state = createState({ count: 0 });
-    const effectFn = vi.fn(() => {
-      state.count;
-    });
+    const effectFn = vi.fn();
+    let state: ReturnType<typeof createState<{ count: number }>>;
 
-    createEffect(effectFn);
+    function Component() {
+      state = createState({ count: 0 });
+      createEffect(() => {
+        effectFn();
+        state.count;
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(effectFn).toHaveBeenCalledTimes(1);
 
@@ -368,12 +511,20 @@ describe("createEffect", () => {
   });
 
   it("should access latest state values when effect runs", async () => {
-    const state = createState({ count: 0 });
     const results: number[] = [];
+    let state: ReturnType<typeof createState<{ count: number }>>;
 
-    createEffect(() => {
-      results.push(state.count);
-    });
+    function Component() {
+      state = createState({ count: 0 });
+
+      createEffect(() => {
+        results.push(state.count);
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     state.count = 1;
     state.count = 2;
@@ -386,18 +537,26 @@ describe("createEffect", () => {
   });
 
   it("should call dispose function before re-executing", async () => {
-    const state = createState({ count: 0 });
     const disposeCalls: number[] = [];
     const effectCalls: number[] = [];
+    let state: ReturnType<typeof createState<{ count: number }>>;
 
-    createEffect(() => {
-      effectCalls.push(state.count);
+    function Component() {
+      state = createState({ count: 0 });
 
-      return () => {
-        // Dispose sees the current state at the time it's called
-        disposeCalls.push(state.count);
-      };
-    });
+      createEffect(() => {
+        effectCalls.push(state.count);
+
+        return () => {
+          // Dispose sees the current state at the time it's called
+          disposeCalls.push(state.count);
+        };
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(effectCalls).toEqual([0]);
     expect(disposeCalls).toEqual([]);
@@ -417,17 +576,25 @@ describe("createEffect", () => {
   });
 
   it("should handle dispose function with cleanup logic", async () => {
-    const state = createState({ url: "/api/data" });
     const subscriptions: string[] = [];
+    let state: ReturnType<typeof createState<{ url: string }>>;
 
-    createEffect(() => {
-      const currentUrl = state.url;
-      subscriptions.push(`subscribe:${currentUrl}`);
+    function Component() {
+      state = createState({ url: "/api/data" });
 
-      return () => {
-        subscriptions.push(`unsubscribe:${currentUrl}`);
-      };
-    });
+      createEffect(() => {
+        const currentUrl = state.url;
+        subscriptions.push(`subscribe:${currentUrl}`);
+
+        return () => {
+          subscriptions.push(`unsubscribe:${currentUrl}`);
+        };
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(subscriptions).toEqual(["subscribe:/api/data"]);
 
@@ -453,13 +620,21 @@ describe("createEffect", () => {
   });
 
   it("should handle effects without dispose function", async () => {
-    const state = createState({ count: 0 });
     const effectCalls: number[] = [];
+    let state: ReturnType<typeof createState<{ count: number }>>;
 
-    createEffect(() => {
-      effectCalls.push(state.count);
-      // No dispose function returned
-    });
+    function Component() {
+      state = createState({ count: 0 });
+
+      createEffect(() => {
+        effectCalls.push(state.count);
+        // No dispose function returned
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(effectCalls).toEqual([0]);
 
@@ -475,19 +650,27 @@ describe("createEffect", () => {
   });
 
   it("should handle dispose function that throws error", async () => {
-    const state = createState({ count: 0 });
     const effectCalls: number[] = [];
     const consoleErrorSpy = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
+    let state: ReturnType<typeof createState<{ count: number }>>;
 
-    createEffect(() => {
-      effectCalls.push(state.count);
+    function Component() {
+      state = createState({ count: 0 });
 
-      return () => {
-        throw new Error("Dispose error");
-      };
-    });
+      createEffect(() => {
+        effectCalls.push(state.count);
+
+        return () => {
+          throw new Error("Dispose error");
+        };
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(effectCalls).toEqual([0]);
 
@@ -505,16 +688,24 @@ describe("createEffect", () => {
   });
 
   it("should call dispose with latest closure values", async () => {
-    const state = createState({ count: 0 });
     const disposeValues: number[] = [];
+    let state: ReturnType<typeof createState<{ count: number }>>;
 
-    createEffect(() => {
-      const capturedCount = state.count;
+    function Component() {
+      state = createState({ count: 0 });
 
-      return () => {
-        disposeValues.push(capturedCount);
-      };
-    });
+      createEffect(() => {
+        const capturedCount = state.count;
+
+        return () => {
+          disposeValues.push(capturedCount);
+        };
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     state.count = 1;
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -530,16 +721,23 @@ describe("createEffect", () => {
   });
 
   it("should handle rapid state changes with dispose", async () => {
-    const state = createState({ count: 0 });
-    const effectFn = vi.fn(() => {
-      state.count;
-    });
+    const effectFn = vi.fn();
     const disposeFn = vi.fn();
+    let state: ReturnType<typeof createState<{ count: number }>>;
 
-    createEffect(() => {
-      effectFn();
-      return disposeFn;
-    });
+    function Component() {
+      state = createState({ count: 0 });
+
+      createEffect(() => {
+        effectFn();
+        state.count;
+        return disposeFn;
+      });
+      return () => <div>test</div>;
+    }
+
+    const container = document.createElement("div");
+    render(<Component />, container);
 
     expect(effectFn).toHaveBeenCalledTimes(1);
     expect(disposeFn).toHaveBeenCalledTimes(0);

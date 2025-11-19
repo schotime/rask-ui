@@ -1,11 +1,19 @@
 import { describe, it, expect, vi } from "vitest";
 import { createTask } from "../createTask";
+import { render } from "../index";
 
 describe("createTask", () => {
   describe("without parameters", () => {
     it("should auto-run on creation and start in idle state", () => {
-      const promise = new Promise(() => {});
-      const task = createTask(() => promise);
+      let task: any;
+      function Component() {
+        const promise = new Promise(() => {});
+        task = createTask(() => promise);
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       // Initial fetch() doesn't set isRunning, only run()/rerun() do
       expect(task.isRunning).toBe(false);
@@ -15,7 +23,14 @@ describe("createTask", () => {
     });
 
     it("should resolve to result state on success", async () => {
-      const task = createTask(() => Promise.resolve("success"));
+      let task: any;
+      function Component() {
+        task = createTask(() => Promise.resolve("success"));
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       // Task doesn't auto-run anymore
       expect(task.isRunning).toBe(false);
@@ -31,7 +46,14 @@ describe("createTask", () => {
     });
 
     it("should resolve to error state on rejection", async () => {
-      const task = createTask(() => Promise.reject(new Error("failed")));
+      let task: any;
+      function Component() {
+        task = createTask(() => Promise.reject(new Error("failed")));
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run();
 
@@ -45,7 +67,14 @@ describe("createTask", () => {
 
     it("should handle run() method", async () => {
       const fetcher = vi.fn(() => Promise.resolve("data"));
-      const task = createTask(fetcher);
+      let task: any;
+      function Component() {
+        task = createTask(fetcher);
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       // Tasks no longer auto-run, so fetcher hasn't been called yet
       expect(fetcher).toHaveBeenCalledTimes(0);
@@ -66,7 +95,14 @@ describe("createTask", () => {
         .mockResolvedValueOnce("data1")
         .mockResolvedValueOnce("data2");
 
-      const task = createTask(fetcher);
+      let task: any;
+      function Component() {
+        task = createTask(fetcher);
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       // First run
       task.run();
@@ -86,7 +122,14 @@ describe("createTask", () => {
   describe("with parameters", () => {
     it("should not auto-run on creation", () => {
       const fetcher = vi.fn((page: number) => Promise.resolve(`page-${page}`));
-      const task = createTask(fetcher);
+      let task: any;
+      function Component() {
+        task = createTask(fetcher);
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       // Tasks no longer auto-run
       expect(task.isRunning).toBe(false);
@@ -98,14 +141,22 @@ describe("createTask", () => {
 
     it("should run when run() is called with params", async () => {
       const fetcher = vi.fn((page: number) => Promise.resolve(`page-${page}`));
-      const task = createTask(fetcher);
+      let task: any;
+      function Component() {
+        task = createTask(fetcher);
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run(1);
 
       expect(task.isRunning).toBe(true);
       expect(task.params).toBe(1);
       expect(task.result).toBeNull();
-      expect(fetcher).toHaveBeenCalledWith(1);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(fetcher.mock.calls[0][0]).toBe(1);
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -115,9 +166,16 @@ describe("createTask", () => {
     });
 
     it("should handle error state with params", async () => {
-      const task = createTask<number, any>((id: number) =>
-        Promise.reject(new Error(`failed-${id}`))
-      );
+      let task: any;
+      function Component() {
+        task = createTask<number, any>((id: number) =>
+          Promise.reject(new Error(`failed-${id}`))
+        );
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run(42);
 
@@ -138,7 +196,14 @@ describe("createTask", () => {
         .mockResolvedValueOnce("data1")
         .mockResolvedValueOnce("data2");
 
-      const task = createTask((page: number) => fetcher());
+      let task: any;
+      function Component() {
+        task = createTask((page: number) => fetcher());
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       // First run
       task.run(1);
@@ -155,9 +220,16 @@ describe("createTask", () => {
     });
 
     it("should update params when running with different values", async () => {
-      const task = createTask((page: number) =>
-        Promise.resolve(`page-${page}`)
-      );
+      let task: any;
+      function Component() {
+        task = createTask((page: number) =>
+          Promise.resolve(`page-${page}`)
+        );
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run(1);
       expect(task.params).toBe(1);
@@ -190,7 +262,14 @@ describe("createTask", () => {
         .mockReturnValueOnce(firstPromise)
         .mockReturnValueOnce(secondPromise);
 
-      const task = createTask(fetcher);
+      let task: any;
+      function Component() {
+        task = createTask(fetcher);
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       // First run
       task.run();
@@ -229,7 +308,14 @@ describe("createTask", () => {
         .mockReturnValueOnce(firstPromise)
         .mockReturnValueOnce(secondPromise);
 
-      const task = createTask((page: number) => fetcher());
+      let task: any;
+      function Component() {
+        task = createTask((page: number) => fetcher());
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run(1);
       expect(task.params).toBe(1);
@@ -254,7 +340,14 @@ describe("createTask", () => {
     it("should handle rapid successive runs", async () => {
       let counter = 0;
       const fetcher = vi.fn(() => Promise.resolve(`data-${++counter}`));
-      const task = createTask(fetcher);
+      let task: any;
+      function Component() {
+        task = createTask(fetcher);
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       // Rapid runs
       task.run();
@@ -271,7 +364,14 @@ describe("createTask", () => {
 
   describe("type handling", () => {
     it("should handle numeric values", async () => {
-      const task = createTask(() => Promise.resolve(42));
+      let task: any;
+      function Component() {
+        task = createTask(() => Promise.resolve(42));
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run();
 
@@ -282,7 +382,14 @@ describe("createTask", () => {
 
     it("should handle object values", async () => {
       const data = { id: 1, name: "Test" };
-      const task = createTask(() => Promise.resolve(data));
+      let task: any;
+      function Component() {
+        task = createTask(() => Promise.resolve(data));
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run();
 
@@ -293,7 +400,14 @@ describe("createTask", () => {
 
     it("should handle array values", async () => {
       const data = [1, 2, 3, 4, 5];
-      const task = createTask(() => Promise.resolve(data));
+      let task: any;
+      function Component() {
+        task = createTask(() => Promise.resolve(data));
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run();
 
@@ -303,7 +417,14 @@ describe("createTask", () => {
     });
 
     it("should convert error to string", async () => {
-      const task = createTask(() => Promise.reject("string error"));
+      let task: any;
+      function Component() {
+        task = createTask(() => Promise.reject("string error"));
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run();
 
@@ -315,7 +436,14 @@ describe("createTask", () => {
 
     it("should handle error objects", async () => {
       const error = new Error("Something went wrong");
-      const task = createTask(() => Promise.reject(error));
+      let task: any;
+      function Component() {
+        task = createTask(() => Promise.reject(error));
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run();
 
@@ -328,21 +456,45 @@ describe("createTask", () => {
       const fetcher = vi.fn((params) => Promise.resolve(params));
 
       // Object params
-      const task1 = createTask(fetcher);
+      let task1: any;
+      function Component1() {
+        task1 = createTask(fetcher);
+        return () => <div>test</div>;
+      }
+
+      const container1 = document.createElement("div");
+      render(<Component1 />, container1);
+
       task1.run({ id: 1, name: "test" } as any);
       expect(task1.params).toEqual({ id: 1, name: "test" });
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Array params
-      const task2 = createTask(fetcher);
+      let task2: any;
+      function Component2() {
+        task2 = createTask(fetcher);
+        return () => <div>test</div>;
+      }
+
+      const container2 = document.createElement("div");
+      render(<Component2 />, container2);
+
       task2.run([1, 2, 3] as any);
       expect(task2.params).toEqual([1, 2, 3]);
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       // String params
-      const task3 = createTask((str: string) => Promise.resolve(str));
+      let task3: any;
+      function Component3() {
+        task3 = createTask((str: string) => Promise.resolve(str));
+        return () => <div>test</div>;
+      }
+
+      const container3 = document.createElement("div");
+      render(<Component3 />, container3);
+
       task3.run("test");
       expect(task3.params).toBe("test");
     });
@@ -350,7 +502,14 @@ describe("createTask", () => {
 
   describe("edge cases", () => {
     it("should handle immediate resolution", async () => {
-      const task = createTask(() => Promise.resolve("immediate"));
+      let task: any;
+      function Component() {
+        task = createTask(() => Promise.resolve("immediate"));
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run();
 
@@ -361,7 +520,14 @@ describe("createTask", () => {
     });
 
     it("should handle immediate rejection", async () => {
-      const task = createTask(() => Promise.reject("immediate error"));
+      let task: any;
+      function Component() {
+        task = createTask(() => Promise.reject("immediate error"));
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run();
 
@@ -372,12 +538,19 @@ describe("createTask", () => {
     });
 
     it("should handle delayed resolution", async () => {
-      const task = createTask(
-        () =>
-          new Promise((resolve) => {
-            setTimeout(() => resolve("delayed"), 10);
-          })
-      );
+      let task: any;
+      function Component() {
+        task = createTask(
+          () =>
+            new Promise((resolve) => {
+              setTimeout(() => resolve("delayed"), 10);
+            })
+        );
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run();
       expect(task.isRunning).toBe(true);
@@ -394,7 +567,14 @@ describe("createTask", () => {
         .mockRejectedValueOnce(new Error("First error"))
         .mockResolvedValueOnce("success");
 
-      const task = createTask(fetcher);
+      let task: any;
+      function Component() {
+        task = createTask(fetcher);
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run();
 
@@ -414,7 +594,14 @@ describe("createTask", () => {
 
   describe("reactive getters", () => {
     it("should expose reactive getters", async () => {
-      const task = createTask(() => Promise.resolve("data"));
+      let task: any;
+      function Component() {
+        task = createTask(() => Promise.resolve("data"));
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run();
 
@@ -439,12 +626,19 @@ describe("createTask", () => {
     });
 
     it("should track params during execution", async () => {
-      const task = createTask(
-        (id: number) =>
-          new Promise((resolve) =>
-            setTimeout(() => resolve(`result-${id}`), 20)
-          )
-      );
+      let task: any;
+      function Component() {
+        task = createTask(
+          (id: number) =>
+            new Promise((resolve) =>
+              setTimeout(() => resolve(`result-${id}`), 20)
+            )
+        );
+        return () => <div>test</div>;
+      }
+
+      const container = document.createElement("div");
+      render(<Component />, container);
 
       task.run(123);
 
