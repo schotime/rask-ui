@@ -1,23 +1,16 @@
 import { getCurrentComponent } from "./component";
 import { INSPECT_MARKER, INSPECTOR_ENABLED, InspectorRef } from "./inspect";
 
-/**
- * Utility type that preserves unions while "flattening" object types.
- */
 type Simplify<T> = T extends any ? { [K in keyof T]: T[K] } : never;
 
-/**
- * Merge two object types where properties from B override properties from A.
- * Distributes over unions in A.
- */
+type UndefinedKeys<T> = {
+  [K in keyof T]-?: [T[K]] extends [undefined] ? K : never;
+}[keyof T];
+
 type MergeTwo<A extends object, B extends object> = A extends any
-  ? Simplify<Omit<A, keyof B> & B>
+  ? Simplify<Omit<A, keyof B> & Omit<B, UndefinedKeys<B>>>
   : never;
 
-/**
- * Merge a readonly tuple of objects left-to-right, with later entries
- * overriding earlier ones. Distributes over unions in the head element.
- */
 type MergeMany<T extends readonly object[]> = T extends [
   infer H extends object,
   ...infer R extends object[]
